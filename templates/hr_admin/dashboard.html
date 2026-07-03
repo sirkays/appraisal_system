@@ -24,7 +24,7 @@
                         <dl>
                             <dt class="text-sm font-medium text-gray-500 truncate">Active Cycles</dt>
                             <dd class="flex items-baseline">
-                                <div class="text-2xl font-bold text-gray-900">0</div>
+                                <div class="text-2xl font-bold text-gray-900">{{ active_cycle_count }}</div>
                             </dd>
                         </dl>
                     </div>
@@ -49,7 +49,7 @@
                         <dl>
                             <dt class="text-sm font-medium text-gray-500 truncate">Total Staff</dt>
                             <dd class="flex items-baseline">
-                                <div class="text-2xl font-bold text-gray-900">0</div>
+                                <div class="text-2xl font-bold text-gray-900">{{ total_staff }}</div>
                             </dd>
                         </dl>
                     </div>
@@ -57,7 +57,7 @@
             </div>
             <div class="bg-gray-50 px-6 py-3 border-t border-gray-100">
                 <div class="text-sm">
-                    <a href="/admin/accounts/customuser/" target="_blank" class="font-medium text-green-600 hover:text-green-500">View directory &rarr;</a>
+                    <a href="{% url 'hr_admin:staff_list' %}" class="font-medium text-green-600 hover:text-green-500">View directory &rarr;</a>
                 </div>
             </div>
         </div>

@@ -11,9 +11,11 @@ def dashboard(request):
         messages.error(request, "Access denied.")
         return redirect('accounts:dashboard_redirect')
         
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
     context = {
         'active_cycle_count': AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE).count(),
-        'total_staff': 0, # TODO: implement staff count
+        'total_staff': User.objects.count(),
     }
     return render(request, 'hr_admin/dashboard.html', context)
 
