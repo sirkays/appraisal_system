@@ -1,4 +1,5 @@
 django>=6.0,<6.1
 gunicorn
+whitenoise
 python-dotenv
 psycopg2-binary
