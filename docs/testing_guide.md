@@ -1,112 +1,106 @@
-# SIRS Appraisal System — Testing Guide
+# SIRS Staff Performance Appraisal System — Comprehensive Testing Guide
 
-This guide will walk you through testing the completed features of the Staff Performance Appraisal System. By following these steps, you will verify the full lifecycle of an appraisal from the Staff's self-assessment through to the Supervisor's review.
-
-## Prerequisites
-
-Ensure the Django development server is running and the database is populated with the initial test data.
-
-1. **Start the Server**:
-   ```bash
-   .venv\Scripts\python manage.py runserver 9092
-   ```
-
-2. **Seed the Database** (if you haven't already):
-   Open a new terminal in the project directory and run:
-   ```bash
-   .venv\Scripts\python manage.py seed_data
-   ```
-   *This command creates the departments, the test users, and the active appraisal cycle with predefined KPIs and Competencies.*
+This guide provides a complete walkthrough for testing the full lifecycle of the Staff Performance Appraisal System. It covers all user roles, from the HR Administrator managing the cycles to the Staff performing self-assessments, and the management (Supervisors and HODs) reviewing them.
 
 ---
 
-## Test Accounts
+## Accessing the System
 
-The `seed_data` command provides the following accounts for testing. All accounts (except admin) use the password `pass123`.
+**Live Environment:** [https://appraisalsystem.site](https://appraisalsystem.site)  
+*(If testing locally, start your server with `python manage.py runserver` and navigate to `http://127.0.0.1:8000`)*
 
-| Role | Username | Password | Notes |
+### Default Test Accounts
+If the database has been seeded with test data, use the following accounts (otherwise, HR Admin can create them):
+
+| Role | Username | Password | Purpose |
 | :--- | :--- | :--- | :--- |
-| **HR / Admin** | `admin` | `adminpassword123` | System Administrator |
-| **HOD** | `hod_tax` | `pass123` | Head of Taxation Department |
-| **Supervisor** | `sup_tax` | `pass123` | Direct Manager of Staff |
-| **Staff** | `staff_tax` | `pass123` | Subordinate who will be appraised |
+| **HR / Admin** | `admin` | `adminpassword123` | Full system administration and cycle management. |
+| **HOD** | `hod_tax` | `pass123` | Head of Taxation Department (Final Approval). |
+| **Supervisor** | `sup_tax` | `pass123` | Direct Manager (First Reviewer). |
+| **Staff** | `staff_tax` | `pass123` | Subordinate (Appraisee). |
 
 ---
 
-## Step-by-Step Testing Flow
+## Phase 1: HR Administration (Setup)
+
+**Role:** HR / Admin (`admin`)
+
+1. **Log In to the HR Portal**:
+   - Log in using the `admin` credentials.
+   - You will be directed to the **HR Dashboard**, which displays an overview of active cycles, staff counts, and recent activities.
+
+2. **Manage Departments & Staff**:
+   - Navigate to **Departments** in the sidebar. Verify you can add or edit departments.
+   - Navigate to **Staff Directory**. Verify you can view staff details, assign them to departments, and assign their supervisors/HODs.
+
+3. **Manage Appraisal Cycles**:
+   - Navigate to **Appraisal Cycles**.
+   - Create a new cycle (e.g., "2025 Annual Review") or edit an existing one.
+   - **Settings:** Inside a cycle, configure the **KPIs**, **Competencies**, and **Narrative Questions**.
+   - Set the cycle status to **Active** to allow staff to begin their appraisals.
+
+4. **Verify System Setup**:
+   - Ensure that the cycle is visible on the HR Dashboard as the "Active Cycle".
+
+---
+
+## Phase 2: The Appraisal Workflow
 
 ### Step 1: Staff Self-Appraisal
+**Role:** Staff (`staff_tax`)
 
-1. **Log In as Staff**:
-   - Navigate to [http://127.0.0.1:9092](http://127.0.0.1:9092).
-   - Log in using `staff_tax` and `pass123`.
-   - You should be redirected to the **Staff Dashboard**. Notice the Welcome banner and the "Pending" status card.
-
-2. **Fill Out the Appraisal Form**:
-   - Click **Start Self-Appraisal** on the dashboard, or use the sidebar link.
-   - You will see the form with KPI categories and Competency categories.
-   - Enter your *Targets*, *Achievements*, and a *Self Score* (1-5) for the KPIs.
-   - Enter your *Self Score* and *Comments* for the Competencies.
-   - Scroll down to fill out the narrative sections (Key Achievements, Challenges, etc.).
-
-3. **Save Draft vs Submit**:
-   - Try clicking **Save as Draft**. You should be redirected to the dashboard with a success message, and your inputs will be saved.
-   - Go back to the form and click **Submit for Review**.
-   - Your appraisal status will change to **Submitted**. The form will now be locked (read-only), and your "My Appraisals" page will reflect this status.
+1. **Log In & Dashboard**:
+   - Log in as `staff_tax`. The dashboard will show a "Pending" appraisal for the active cycle.
+2. **Complete the Form**:
+   - Click **Start Self-Appraisal**.
+   - Fill in your *Targets*, *Achievements*, and *Self Score* (1-5) for the quantitative KPIs.
+   - Grade yourself on the qualitative Competencies and add comments.
+   - Fill out the required narrative sections (Challenges, Key Achievements, etc.).
+3. **Save and Submit**:
+   - Test **Save as Draft** to ensure your data is saved without submitting.
+   - Click **Submit for Review**. The status will change to **Submitted**, and the form will be locked for editing.
 
 ### Step 2: Supervisor Review
+**Role:** Supervisor (`sup_tax`)
 
-1. **Log In as Supervisor**:
-   - Log out of the staff account.
-   - Log back in using `sup_tax` and `pass123`.
-   - You will be redirected to the **Supervisor Dashboard**.
-
-2. **Check the Dashboard & Notifications**:
-   - Notice the bell icon at the top right has a red dot. Click it to see the notification that `staff_tax` has submitted their appraisal.
-   - Your "To Review" counter should show `1`, and the pending submission will appear in the table at the bottom of the dashboard.
-
-3. **Review the Team List**:
-   - Click **Team Appraisals** in the left sidebar.
-   - You will see John Nwachukwu (`staff_tax`) listed here with a "Submitted" badge and their calculated self-score.
-   - Click the **Review** button.
-
-4. **Grade the Appraisal**:
-   - On the Review page, you'll see the staff member's scores on the left side, and a panel for you to input the supervisor scores on the right side.
-   - Click the score numbers (1-5) to grade each KPI and Competency. Add optional comments.
-   - Scroll to the bottom to view the staff's free-text answers.
-   - Fill out the **Final Recommendation** dropdown, add any strengths/weaknesses, and overall comments.
-
-5. **Save Draft vs Submit**:
-   - Try clicking **Save Draft**. The review will be saved but not submitted. The staff's status on the Team List will show "Submitted (Draft Saved)" and the action button will say "Continue Review".
-   - *(Optional Test)* Click **Return to Staff for Revision**. This will push the appraisal back to `staff_tax`, changing the status to "Returned". If you do this, log back in as `staff_tax` to see the notification, edit the form, and re-submit it.
-   - Click **Submit to HOD**.
-   - The system will calculate the final supervisor score (60% KPI / 40% Competency) and lock the review. The appraisal is now awaiting HOD approval.
+1. **Dashboard & Notifications**:
+   - Log in as `sup_tax`. Check the notification bell for a new submission alert.
+   - Your "To Review" dashboard counter should indicate a pending appraisal.
+2. **Grade the Appraisal**:
+   - Navigate to **Team Appraisals** and click **Review** next to the staff member's name.
+   - Review the staff's self-scores. 
+   - Input the **Supervisor Scores** (1-5) for each KPI and Competency.
+   - Add supervisor comments and fill out the Final Recommendation section.
+3. **Actions**:
+   - *(Optional)* Use **Return to Staff for Revision** to send it back. (If tested, staff must re-submit).
+   - Click **Submit to HOD**. The system calculates the weighted final score and forwards it to the HOD.
 
 ### Step 3: HOD Final Approval
+**Role:** HOD (`hod_tax`)
 
-1. **Log In as HOD**:
-   - Log out of the supervisor account.
-   - Log in using `hod_tax` and `pass123`.
-   - You will land on the **HOD Dashboard**, displaying department metrics and pending approvals.
-
-2. **Check Department List & Queue**:
-   - Notice your "Pending Approval" counter is `1`, and the appraisal from `staff_tax` is in your queue.
-   - Click **Department Appraisals** in the sidebar. This lists all staff under your department. The staff member's appraisal status is now `Under Review`.
-   - Click **Review** next to the submitted appraisal.
-
-3. **Finalize the Appraisal**:
-   - Review the Staff's inputs alongside the Supervisor's scores and recommendations.
-   - At the bottom of the page, add optional HOD comments.
-   - *(Optional Test)* Click **Return to Supervisor for Revision** if you want to push it back to `sup_tax`.
-   - Click **Approve Appraisal**.
-   - The status changes to **Approved**, the final score is locked, and notifications are sent out.
-
-### Step 4: Verify the Complete Lifecycle
-
-- **As Staff**: Log in as `staff_tax`. The dashboard shows the appraisal is **Approved**. You have a notification of approval, and clicking "Self Appraisal" shows the completely locked form with all final scores.
-- **As Supervisor**: Log in as `sup_tax`. The "Team Appraisals" page shows the staff's appraisal as **Approved**.
+1. **Review & Approve**:
+   - Log in as `hod_tax`. Check the notification bell.
+   - Navigate to **Department Appraisals**. You will see the appraisal marked as `Under Review`.
+   - Click **Review** to see both the Staff's inputs and the Supervisor's grades/comments.
+   - Add an HOD Comment at the bottom.
+   - Click **Approve Appraisal**. The status updates to **Approved** and the final score is permanently locked.
 
 ---
 
-## What's Next?
-If all steps work correctly, the system successfully passes data through the entire chain (Staff -> Supervisor -> HOD). The next major development phase will be building the **HR Administration Portal** to manage the cycles, track system-wide reports, and oversee the entire organization's appraisals!
+## Phase 3: Reporting & Edge Cases
+
+1. **Verifying Completion (Staff)**:
+   - Log back in as `staff_tax`. Verify the dashboard shows the appraisal as **Approved** and you can view the finalized, read-only document.
+
+2. **HR Admin Reports & Overrides**:
+   - Log in as `admin`. 
+   - Navigate to **Reports** to view system-wide analytics (e.g., Average scores, Completion rates).
+   - In the **Appraisal Cycles** view, HR can manually **Remove Appraisals** if a restart is needed, or **Re-add Staff** who were mistakenly excluded.
+
+3. **Data Export (If configured)**:
+   - HR Admins can test generating Excel or Word dumps from the Reports section to verify data export functionality for payroll/promotions.
+
+---
+
+**End of Testing Guide**  
+*Please report any bugs, miscalculations in scoring, or workflow dead-ends to the development team.*
