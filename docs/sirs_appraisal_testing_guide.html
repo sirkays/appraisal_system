@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SIRS Staff Performance Appraisal System — Testing Guide</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #5d6678;
+      --paper: #ffffff;
+      --soft: #f4f7fb;
+      --line: #dce4ef;
+      --brand: #1f6feb;
+      --brand-dark: #124fa7;
+      --accent: #16a085;
+      --warning: #f59e0b;
+      --shadow: 0 18px 40px rgba(22, 32, 51, 0.10);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      line-height: 1.65;
+      background:
+        radial-gradient(circle at top left, rgba(31, 111, 235, 0.14), transparent 34rem),
+        linear-gradient(180deg, #eef4ff 0%, #f8fafc 42%, #ffffff 100%);
+    }
+
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 56px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 42px;
+      border-radius: 28px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #0f2d5c 0%, #1f6feb 60%, #16a085 100%);
+      box-shadow: var(--shadow);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -100px;
+      top: -110px;
+      width: 330px;
+      height: 330px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.13);
+    }
+
+    .hero-content { position: relative; z-index: 1; max-width: 820px; }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 12px;
+      margin-bottom: 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      font-size: 0.84rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(2rem, 5vw, 4rem);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 720px;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 1.08rem;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 22px 0 0;
+    }
+
+    .meta-card {
+      padding: 14px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.13);
+      backdrop-filter: blur(10px);
+    }
+
+    .meta-card span {
+      display: block;
+      color: rgba(255, 255, 255, 0.74);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .meta-card strong {
+      display: block;
+      margin-top: 4px;
+      color: #ffffff;
+      font-size: 0.98rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 24px;
+      margin-top: 24px;
+      align-items: start;
+    }
+
+    .toc {
+      position: sticky;
+      top: 20px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 12px 30px rgba(22, 32, 51, 0.06);
+    }
+
+    .toc h2 {
+      margin: 0 0 12px;
+      font-size: 0.92rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .toc a {
+      display: block;
+      padding: 9px 10px;
+      margin: 3px 0;
+      border-radius: 10px;
+      color: var(--ink);
+      font-weight: 650;
+      font-size: 0.95rem;
+    }
+
+    .toc a:hover {
+      color: var(--brand-dark);
+      background: #eef5ff;
+      text-decoration: none;
+    }
+
+    .content { display: grid; gap: 22px; }
+
+    .section,
+    .callout {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 12px 30px rgba(22, 32, 51, 0.06);
+    }
+
+    .section { overflow: hidden; }
+
+    .section-header {
+      padding: 22px 24px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    }
+
+    .section-header h2,
+    .section-header h3 {
+      margin: 0;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .section-header p {
+      margin: 8px 0 0;
+      color: var(--muted);
+    }
+
+    .section-body { padding: 22px 24px 26px; }
+
+    .callout {
+      padding: 18px 20px;
+      background: #f4fbff;
+      border-left: 5px solid var(--brand);
+    }
+
+    .callout strong { display: block; margin-bottom: 4px; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: #eef5ff;
+      color: var(--brand-dark);
+      font-weight: 800;
+      font-size: 0.86rem;
+    }
+
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 16px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .steps > li {
+      counter-increment: step;
+      position: relative;
+      padding: 18px 18px 18px 64px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+    }
+
+    .steps > li::before {
+      content: counter(step);
+      position: absolute;
+      left: 18px;
+      top: 18px;
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      background: var(--brand);
+      font-weight: 900;
+      box-shadow: 0 8px 14px rgba(31, 111, 235, 0.26);
+    }
+
+    .steps strong { color: #101827; }
+    .steps ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .workflow-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+    }
+
+    .workflow-card .number {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 8px;
+      border-radius: 12px;
+      background: #e9f6f3;
+      color: #0f766e;
+      font-weight: 900;
+    }
+
+    .workflow-card h4 { margin: 0 0 5px; }
+    .workflow-card p { margin: 0; color: var(--muted); font-size: 0.94rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 14px;
+      box-shadow: 0 0 0 1px var(--line);
+      background: white;
+    }
+
+    th,
+    td {
+      padding: 14px 16px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      color: #ffffff;
+      background: #173b70;
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 7px;
+      background: #edf2f7;
+      color: #101827;
+      font-size: 0.93em;
+    }
+
+    .checklist {
+      display: grid;
+      gap: 11px;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+    }
+
+    .checklist li {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #ffffff;
+    }
+
+    .checklist li::before {
+      content: "✓";
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #e9f8f1;
+      color: #0f8a5f;
+      font-weight: 900;
+    }
+
+    .footer {
+      margin-top: 22px;
+      padding: 22px 24px;
+      border-radius: var(--radius);
+      color: #ffffff;
+      background: #172033;
+      box-shadow: var(--shadow);
+    }
+
+    .footer p { margin: 0; color: rgba(255, 255, 255, 0.82); }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { position: static; }
+      .meta-grid,
+      .workflow { grid-template-columns: 1fr; }
+      .hero { padding: 30px 24px; }
+    }
+
+    @media (max-width: 640px) {
+      .page { width: min(100% - 20px, 1120px); padding-top: 10px; }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
+      .section-header, .section-body { padding-left: 18px; padding-right: 18px; }
+      .steps > li { padding-left: 58px; }
+    }
+
+    @media print {
+      body { background: #ffffff; }
+      .page { width: 100%; padding: 0; }
+      .hero, .section, .callout, .footer { box-shadow: none; }
+      .toc { display: none; }
+      .layout { display: block; }
+      a { color: inherit; }
+      .section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="hero-content">
+        <div class="eyebrow">Testing Guide</div>
+        <h1>SIRS Staff Performance Appraisal System</h1>
+        <p>A straightforward, end-to-end guide for testing the full appraisal lifecycle across HR Admin, Staff, Supervisor, and HOD roles.</p>
+        <div class="meta-grid" aria-label="Guide summary">
+          <div class="meta-card">
+            <span>Environment</span>
+            <strong>Live or Local Testing</strong>
+          </div>
+          <div class="meta-card">
+            <span>Roles Covered</span>
+            <strong>HR, Staff, Supervisor, HOD</strong>
+          </div>
+          <div class="meta-card">
+            <span>Goal</span>
+            <strong>Validate Full Workflow</strong>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <nav class="toc" aria-label="Table of contents">
+        <h2>Contents</h2>
+        <a href="#access">Accessing the System</a>
+        <a href="#accounts">Default Test Accounts</a>
+        <a href="#phase-1">Phase 1: HR Setup</a>
+        <a href="#phase-2">Phase 2: Workflow</a>
+        <a href="#phase-3">Phase 3: Reports</a>
+        <a href="#completion">Completion Checklist</a>
+      </nav>
+
+      <div class="content">
+        <section class="section" id="access">
+          <div class="section-header">
+            <h2>Accessing the System</h2>
+            <p>Start by opening either the live application or your local development server.</p>
+          </div>
+          <div class="section-body">
+            <div class="callout">
+              <strong>Live Environment</strong>
+              <a href="https://appraisalsystem.site" target="_blank" rel="noopener">https://appraisalsystem.site</a>
+            </div>
+            <p>For local testing, start the Django server with <code>python manage.py runserver</code>, then visit <code>http://127.0.0.1:8000</code> in your browser.</p>
+          </div>
+        </section>
+
+        <section class="section" id="accounts">
+          <div class="section-header">
+            <h2>Default Test Accounts</h2>
+            <p>Use these accounts when the database has been seeded with test data. Otherwise, the HR Admin can create them.</p>
+          </div>
+          <div class="section-body">
+            <table>
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>Username</th>
+                  <th>Password</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>HR / Admin</strong></td>
+                  <td><code>admin</code></td>
+                  <td><code>adminpassword123</code></td>
+                  <td>Full system administration and appraisal cycle management.</td>
+                </tr>
+                <tr>
+                  <td><strong>HOD</strong></td>
+                  <td><code>hod_tax</code></td>
+                  <td><code>pass123</code></td>
+                  <td>Head of Taxation Department. Handles final approval.</td>
+                </tr>
+                <tr>
+                  <td><strong>Supervisor</strong></td>
+                  <td><code>sup_tax</code></td>
+                  <td><code>pass123</code></td>
+                  <td>Direct manager. Handles first review.</td>
+                </tr>
+                <tr>
+                  <td><strong>Staff</strong></td>
+                  <td><code>staff_tax</code></td>
+                  <td><code>pass123</code></td>
+                  <td>Appraisee. Completes the self-appraisal.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="phase-1">
+          <div class="section-header">
+            <span class="pill">Phase 1</span>
+            <h2>HR Administration Setup</h2>
+            <p><strong>Role:</strong> HR / Admin <code>admin</code></p>
+          </div>
+          <div class="section-body">
+            <ol class="steps">
+              <li>
+                <strong>Log in to the HR Portal.</strong>
+                <ul>
+                  <li>Log in using the <code>admin</code> credentials.</li>
+                  <li>Confirm that the HR Dashboard displays active cycles, staff counts, and recent activity.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Manage Departments and Staff.</strong>
+                <ul>
+                  <li>Go to <strong>Departments</strong> and verify that departments can be added or edited.</li>
+                  <li>Go to <strong>Staff Directory</strong> and verify that staff details, department assignments, supervisors, and HODs can be managed.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Manage Appraisal Cycles.</strong>
+                <ul>
+                  <li>Open <strong>Appraisal Cycles</strong>.</li>
+                  <li>Create a new cycle, such as <strong>2025 Annual Review</strong>, or edit an existing one.</li>
+                  <li>Inside the cycle, configure KPIs, competencies, and narrative questions.</li>
+                  <li>Set the cycle status to <strong>Active</strong> so staff can begin appraisals.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Verify setup.</strong>
+                <ul>
+                  <li>Confirm that the cycle appears on the HR Dashboard as the active cycle.</li>
+                </ul>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="section" id="phase-2">
+          <div class="section-header">
+            <span class="pill">Phase 2</span>
+            <h2>The Appraisal Workflow</h2>
+            <p>Test the complete flow from staff self-appraisal to supervisor review and HOD approval.</p>
+          </div>
+          <div class="section-body">
+            <div class="workflow">
+              <div class="workflow-card">
+                <div class="number">1</div>
+                <h4>Staff Self-Appraisal</h4>
+                <p>Staff completes and submits the appraisal form.</p>
+              </div>
+              <div class="workflow-card">
+                <div class="number">2</div>
+                <h4>Supervisor Review</h4>
+                <p>Supervisor scores, comments, and forwards the appraisal.</p>
+              </div>
+              <div class="workflow-card">
+                <div class="number">3</div>
+                <h4>HOD Approval</h4>
+                <p>HOD reviews, comments, and gives final approval.</p>
+              </div>
+            </div>
+
+            <h3>Step 1: Staff Self-Appraisal</h3>
+            <p><strong>Role:</strong> Staff <code>staff_tax</code></p>
+            <ol class="steps">
+              <li>
+                <strong>Log in and check the dashboard.</strong>
+                <ul>
+                  <li>Log in as <code>staff_tax</code>.</li>
+                  <li>Confirm that the dashboard shows a pending appraisal for the active cycle.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Complete the appraisal form.</strong>
+                <ul>
+                  <li>Click <strong>Start Self-Appraisal</strong>.</li>
+                  <li>Enter targets, achievements, and self scores from 1 to 5 for quantitative KPIs.</li>
+                  <li>Grade competencies and add comments.</li>
+                  <li>Complete the required narrative sections such as challenges and key achievements.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Save and submit.</strong>
+                <ul>
+                  <li>Test <strong>Save as Draft</strong> to ensure entries are saved without submission.</li>
+                  <li>Click <strong>Submit for Review</strong>.</li>
+                  <li>Confirm that the status changes to <strong>Submitted</strong> and the form is locked for editing.</li>
+                </ul>
+              </li>
+            </ol>
+
+            <h3>Step 2: Supervisor Review</h3>
+            <p><strong>Role:</strong> Supervisor <code>sup_tax</code></p>
+            <ol class="steps">
+              <li>
+                <strong>Check dashboard and notifications.</strong>
+                <ul>
+                  <li>Log in as <code>sup_tax</code>.</li>
+                  <li>Check the notification bell for a new submission alert.</li>
+                  <li>Confirm that the <strong>To Review</strong> dashboard counter shows a pending appraisal.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Grade the appraisal.</strong>
+                <ul>
+                  <li>Open <strong>Team Appraisals</strong>.</li>
+                  <li>Click <strong>Review</strong> beside the staff member’s name.</li>
+                  <li>Review the staff self-scores.</li>
+                  <li>Enter supervisor scores from 1 to 5 for each KPI and competency.</li>
+                  <li>Add supervisor comments and complete the final recommendation section.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Submit to HOD.</strong>
+                <ul>
+                  <li>Optionally test <strong>Return to Staff for Revision</strong>. If used, the staff member must resubmit.</li>
+                  <li>Click <strong>Submit to HOD</strong>.</li>
+                  <li>Confirm that the weighted final score is calculated and the appraisal is forwarded to the HOD.</li>
+                </ul>
+              </li>
+            </ol>
+
+            <h3>Step 3: HOD Final Approval</h3>
+            <p><strong>Role:</strong> HOD <code>hod_tax</code></p>
+            <ol class="steps">
+              <li>
+                <strong>Review the pending appraisal.</strong>
+                <ul>
+                  <li>Log in as <code>hod_tax</code>.</li>
+                  <li>Check the notification bell.</li>
+                  <li>Go to <strong>Department Appraisals</strong>.</li>
+                  <li>Confirm that the appraisal is marked as <strong>Under Review</strong>.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Approve the appraisal.</strong>
+                <ul>
+                  <li>Click <strong>Review</strong> to view staff inputs and supervisor grades/comments.</li>
+                  <li>Add an HOD comment at the bottom.</li>
+                  <li>Click <strong>Approve Appraisal</strong>.</li>
+                  <li>Confirm that the status changes to <strong>Approved</strong> and the final score is locked.</li>
+                </ul>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="section" id="phase-3">
+          <div class="section-header">
+            <span class="pill">Phase 3</span>
+            <h2>Reporting and Edge Cases</h2>
+            <p>Confirm final visibility, reporting, exports, and admin recovery options.</p>
+          </div>
+          <div class="section-body">
+            <ol class="steps">
+              <li>
+                <strong>Verify completion as Staff.</strong>
+                <ul>
+                  <li>Log back in as <code>staff_tax</code>.</li>
+                  <li>Confirm that the dashboard shows the appraisal as <strong>Approved</strong>.</li>
+                  <li>Open the finalized appraisal and confirm that it is read-only.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Check HR reports and overrides.</strong>
+                <ul>
+                  <li>Log in as <code>admin</code>.</li>
+                  <li>Open <strong>Reports</strong> and verify system-wide analytics such as average scores and completion rates.</li>
+                  <li>In <strong>Appraisal Cycles</strong>, test whether HR can remove appraisals for a restart or re-add staff who were mistakenly excluded.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Test data export if configured.</strong>
+                <ul>
+                  <li>From the Reports section, test Excel or Word export generation.</li>
+                  <li>Confirm that exported files contain the correct appraisal data for payroll, promotion, or record-keeping use.</li>
+                </ul>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="section" id="completion">
+          <div class="section-header">
+            <h2>Completion Checklist</h2>
+            <p>Use this quick checklist before marking the test cycle as complete.</p>
+          </div>
+          <div class="section-body">
+            <ul class="checklist">
+              <li>HR can create and activate an appraisal cycle.</li>
+              <li>Staff can save a draft and submit a self-appraisal.</li>
+              <li>Supervisor can review, score, comment, return, or submit to HOD.</li>
+              <li>HOD can review and approve the final appraisal.</li>
+              <li>Final approved appraisal is locked and visible as read-only.</li>
+              <li>Reports and exports show accurate scores, statuses, and completion data.</li>
+            </ul>
+          </div>
+        </section>
+
+        <footer class="footer">
+          <strong>End of Testing Guide</strong>
+          <p>Please report any bugs, scoring miscalculations, missing notifications, permission issues, or workflow dead-ends to the development team.</p>
+        </footer>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
