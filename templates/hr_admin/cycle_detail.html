@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cycle Details: {{ cycle.name }}{% endblock %}
+
+{% block content %}
+<div class="px-4 py-8">
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">{{ cycle.name }}</h1>
+            <p class="mt-2 text-sm text-gray-600">Cycle Overview</p>
+        </div>
+        <a href="{% url 'hr_admin:cycle_edit' cycle.id %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+            Edit Configuration
+        </a>
+    </div>
+
+    <div class="bg-white shadow rounded-xl border border-gray-200 p-6">
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6">
+            <div class="sm:col-span-1">
+                <dt class="text-sm font-medium text-gray-500">Status</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ cycle.get_status_display }}</dd>
+            </div>
+            <div class="sm:col-span-1">
+                <dt class="text-sm font-medium text-gray-500">Scoring Scale</dt>
+                <dd class="mt-1 text-sm text-gray-900">1 to {{ cycle.scoring_scale }}</dd>
+            </div>
+            <div class="sm:col-span-1">
+                <dt class="text-sm font-medium text-gray-500">Start Date</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ cycle.start_date|date:"M d, Y"|default:"Not set" }}</dd>
+            </div>
+            <div class="sm:col-span-1">
+                <dt class="text-sm font-medium text-gray-500">End Date</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ cycle.end_date|date:"M d, Y"|default:"Not set" }}</dd>
+            </div>
+        </dl>
+    </div>
+</div>
+{% endblock %}

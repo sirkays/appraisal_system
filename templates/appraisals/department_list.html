@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block title %}Department Appraisals — SIRS Appraisal Portal{% endblock %}
+
+{% block content %}
+<div class="space-y-7 max-w-6xl mx-auto">
+
+    <!-- ══════════ PAGE HEADER ══════════ -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                Department Appraisals
+            </h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                View the status of all staff in <strong class="text-slate-700 dark:text-slate-300">{{ user.department.name }}</strong> for the active cycle.
+            </p>
+        </div>
+        <div class="shrink-0">
+            {% if active_cycle %}
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span class="text-xs font-bold uppercase tracking-wider">Active Cycle: {{ active_cycle.name }}</span>
+            </div>
+            {% else %}
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                <span class="text-xs font-bold uppercase tracking-wider">No Active Cycle</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ══════════ DEPT MEMBERS TABLE ══════════ -->
+    <div class="bg-white dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100">Department Staff</h2>
+            <span class="text-xs text-slate-400 dark:text-slate-500">{{ dept_data|length }} member{{ dept_data|length|pluralize }}</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-slate-50/50 dark:bg-slate-800/30 text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">
+                    <tr>
+                        <th class="px-6 py-4">Staff Member</th>
+                        <th class="px-6 py-4">Supervisor</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Scores</th>
+                        <th class="px-6 py-4 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {% for item in dept_data %}
+                    <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/20 transition">
+                        <!-- Staff Info -->
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300 shadow-sm shrink-0 border border-slate-200 dark:border-slate-700">
+                                    {{ item.member.first_name|slice:":1" }}{{ item.member.last_name|slice:":1" }}
+                                </div>
+                                <div>
+                                    <p class="font-bold text-slate-800 dark:text-slate-200">{{ item.member.get_full_name }}</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-500 mt-0.5">{{ item.member.designation|default:"—" }}</p>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Supervisor -->
+                        <td class="px-6 py-4">
+                            <p class="font-medium text-slate-700 dark:text-slate-300">{{ item.member.supervisor.get_full_name|default:"—" }}</p>
+                        </td>
+
+                        <!-- Appraisal Status -->
+                        <td class="px-6 py-4">
+                            {% if item.appraisal %}
+                                <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg
+                                             {% if item.appraisal.status == 'APPROVED' %}bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400
+                                             {% elif item.appraisal.status == 'UNDER_REVIEW' %}bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400
+                                             {% elif item.appraisal.status == 'SUBMITTED' or item.appraisal.status == 'RETURNED_TO_SUPERVISOR' %}bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400
+                                             {% elif item.appraisal.status == 'DRAFT' or item.appraisal.status == 'NOT_STARTED' or item.appraisal.status == 'RETURNED_TO_STAFF' %}bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400
+                                             {% else %}bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400{% endif %}">
+                                    <span class="w-1.5 h-1.5 rounded-full
+                                                 {% if item.appraisal.status == 'APPROVED' %}bg-emerald-500
+                                                 {% elif item.appraisal.status == 'UNDER_REVIEW' %}bg-blue-500
+                                                 {% elif item.appraisal.status == 'SUBMITTED' or item.appraisal.status == 'RETURNED_TO_SUPERVISOR' %}bg-purple-400
+                                                 {% elif item.appraisal.status == 'DRAFT' or item.appraisal.status == 'NOT_STARTED' or item.appraisal.status == 'RETURNED_TO_STAFF' %}bg-amber-400
+                                                 {% else %}bg-slate-400{% endif %}"></span>
+                                    {{ item.appraisal.get_status_display }}
+                                </span>
+                            {% else %}
+                                <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                                    No Appraisal Record
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Scores -->
+                        <td class="px-6 py-4">
+                            {% if item.appraisal %}
+                                {% if item.appraisal.overall_supervisor_score %}
+                                <div class="text-xs">
+                                    <span class="text-slate-500">Sup:</span> <span class="font-bold text-slate-800 dark:text-slate-100">{{ item.appraisal.overall_supervisor_score }}</span><br>
+                                    <span class="text-slate-500">Self:</span> <span class="text-slate-700 dark:text-slate-300">{{ item.appraisal.overall_self_score|default:"-" }}</span>
+                                </div>
+                                {% elif item.appraisal.overall_self_score %}
+                                <div class="text-xs">
+                                    <span class="text-slate-500">Self:</span> <span class="font-bold text-slate-800 dark:text-slate-100">{{ item.appraisal.overall_self_score }}</span>
+                                </div>
+                                {% else %}
+                                <span class="text-slate-400 dark:text-slate-600 text-xs">—</span>
+                                {% endif %}
+                            {% else %}
+                            <span class="text-slate-400 dark:text-slate-600 text-xs">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Action -->
+                        <td class="px-6 py-4 text-right">
+                            {% if item.appraisal and item.appraisal.status == 'UNDER_REVIEW' %}
+                                <a href="{% url 'appraisals:hod_review' item.appraisal.id %}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition shadow-sm">
+                                    Review
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                </a>
+                            {% elif item.appraisal and item.appraisal.status != 'NOT_STARTED' and item.appraisal.status != 'DRAFT' %}
+                                <a href="{% url 'appraisals:hod_review' item.appraisal.id %}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition shadow-sm">
+                                    View
+                                </a>
+                            {% else %}
+                                <span class="text-xs text-slate-400 dark:text-slate-500 italic">No action</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center">
+                            <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                                <svg class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                </svg>
+                            </div>
+                            <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">No Department Staff</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-500 mt-1">There are no staff members currently in your department.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

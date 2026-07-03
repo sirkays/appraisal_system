@@ -1,0 +1,332 @@
+{% extends 'base.html' %}
+{% block title %}HOD Review: {{ appraisal.staff.get_full_name }} — SIRS Portal{% endblock %}
+
+{% block content %}
+<div class="space-y-7 max-w-6xl mx-auto">
+
+    <!-- ══════════ PAGE HEADER ══════════ -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                HOD Appraisal Review
+            </h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Final approval for <span class="font-bold text-slate-800 dark:text-slate-200">{{ appraisal.staff.get_full_name }}</span> ({{ appraisal.cycle.name }})
+            </p>
+        </div>
+        <div class="shrink-0">
+            <a href="{% url 'appraisals:department_appraisals' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Back to Department List
+            </a>
+        </div>
+    </div>
+
+    <!-- ══════════ RETURN REASON ALERT ══════════ -->
+    {% if appraisal.status == 'RETURNED_TO_SUPERVISOR' and appraisal.hod_return_notes %}
+    <div class="bg-slate-50 dark:bg-slate-800/30 border-l-4 border-slate-400 p-4 rounded-r-xl shadow-sm mb-6">
+        <div class="flex items-start gap-3">
+            <svg class="h-6 w-6 text-slate-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+            </svg>
+            <div>
+                <h3 class="font-bold text-slate-800 dark:text-slate-300">Returned to Supervisor</h3>
+                <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">You returned this appraisal to the supervisor with the following reason:</p>
+                <div class="mt-3 p-3 bg-white/60 dark:bg-slate-900/50 rounded-lg text-sm text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 italic">
+                    "{{ appraisal.hod_return_notes }}"
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ══════════ STAFF & SCORES CARD ══════════ -->
+    <div class="bg-white dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/50 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center gap-6">
+        <div class="flex items-center gap-4 border-r border-slate-200 dark:border-slate-800 pr-6 shrink-0">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-xl font-bold text-white shadow-sm shrink-0">
+                {{ appraisal.staff.first_name|slice:":1" }}{{ appraisal.staff.last_name|slice:":1" }}
+            </div>
+            <div>
+                <p class="font-bold text-lg text-slate-800 dark:text-slate-100">{{ appraisal.staff.get_full_name }}</p>
+                <p class="text-sm text-slate-500">{{ appraisal.staff.designation|default:"—" }}</p>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+            <div>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide">Supervisor</p>
+                <p class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">{{ appraisal.supervisor.get_full_name|default:"—" }}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</p>
+                <p class="text-sm font-bold text-blue-600 dark:text-blue-400 mt-1">{{ appraisal.get_status_display }}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide">Self Score</p>
+                <p class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">
+                    {{ appraisal.overall_self_score|default:"—" }} <span class="text-xs font-normal text-slate-400">/ {{ appraisal.cycle.scoring_scale }}</span>
+                </p>
+            </div>
+            <div class="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-xl border border-blue-100 dark:border-blue-800/50">
+                <p class="text-xs font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Sup. Final Score</p>
+                <p class="text-xl font-black text-blue-700 dark:text-blue-300">
+                    {{ appraisal.overall_supervisor_score|default:"—" }} <span class="text-sm font-normal text-blue-500">/ {{ appraisal.cycle.scoring_scale }}</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN FORM -->
+    <form method="POST" action="{% url 'appraisals:hod_review' appraisal.id %}">
+        {% csrf_token %}
+
+        <!-- ══════════ SUPERVISOR OVERALL REVIEW ══════════ -->
+        <div class="space-y-6 mt-8">
+            <h2 class="text-xl font-extrabold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-2">
+                1. Supervisor's Final Recommendation & Comments
+            </h2>
+            
+            <div class="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200/70 dark:border-blue-800/40 rounded-2xl p-6 lg:p-8 shadow-sm">
+                <div class="space-y-6">
+                    <div>
+                        <p class="text-xs font-bold text-blue-500 uppercase tracking-wider mb-2">Overall Recommendation</p>
+                        <p class="text-lg font-bold text-slate-800 dark:text-slate-100">{{ sup_review.get_recommendation_display|default:"—" }}</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-xs font-bold text-blue-500 uppercase tracking-wider mb-2">Observed Strengths</p>
+                            <div class="bg-white dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 min-h-[100px] text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ sup_review.strengths|default:"None provided." }}</div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-blue-500 uppercase tracking-wider mb-2">Areas for Improvement</p>
+                            <div class="bg-white dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 min-h-[100px] text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ sup_review.areas_for_improvement|default:"None provided." }}</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-xs font-bold text-blue-500 uppercase tracking-wider mb-2">Overall Comments</p>
+                        <div class="bg-white dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 min-h-[80px] text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ sup_review.overall_comments|default:"None provided." }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════ STAFF NARRATIVE (READ ONLY) ══════════ -->
+        {% if narrative_responses %}
+        <div class="space-y-6 mt-12">
+            <h2 class="text-xl font-extrabold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-2">
+                2. Staff's Free-Text Narratives
+            </h2>
+            <div class="bg-white dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/50 rounded-2xl p-6 shadow-sm space-y-6">
+                {% for resp in narrative_responses %}
+                <div>
+                    <h4 class="font-bold text-slate-800 dark:text-slate-200">{{ resp.field.name }}</h4>
+                    {% if resp.field.description %}
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">{{ resp.field.description }}</p>
+                    {% endif %}
+                    <div class="mt-2 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 whitespace-pre-wrap">{{ resp.response_text|default:"None listed." }}</div>
+                    {% if resp.evidence_file %}
+                    <div class="mt-3">
+                        <a href="{{ resp.evidence_file.url }}" target="_blank" class="inline-flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-500 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                            View Attached File
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if not forloop.last %}<hr class="border-slate-100 dark:border-slate-800/60">{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ══════════ KPI REVIEW (READ ONLY) ══════════ -->
+        <div class="space-y-6 mt-12">
+            <h2 class="text-xl font-extrabold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-2">
+                3. Key Performance Indicators Breakdown
+            </h2>
+            
+            {% for cat_data in kpi_scores_by_cat %}
+            <div class="bg-white dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-sm mb-6">
+                <div class="px-6 py-4 bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800 dark:text-slate-200">{{ cat_data.category.name }}</h3>
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">Weight: {{ cat_data.category.weight }}%</span>
+                </div>
+                <div class="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {% for score in cat_data.scores %}
+                    <div class="p-6">
+                        <div class="mb-4">
+                            <h4 class="font-bold text-slate-800 dark:text-slate-100">{{ score.kpi_item.name }}</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ score.kpi_item.description }}</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Staff Side -->
+                            <div class="bg-slate-50 dark:bg-slate-800/30 rounded-xl p-5 border border-slate-100 dark:border-slate-800/60">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between">
+                                    <span>Staff Assessment</span>
+                                    <span class="text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded font-bold">{{ score.self_score|default:"-" }} / {{ appraisal.cycle.scoring_scale }}</span>
+                                </h5>
+                                <p class="text-sm text-slate-600 dark:text-slate-400 italic">"{{ score.staff_comment|default:'No comment provided.' }}"</p>
+                                {% if score.evidence_file %}
+                                <a href="{{ score.evidence_file.url }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-500 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 mt-3">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                    View Evidence File
+                                </a>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Supervisor Side -->
+                            <div class="bg-blue-50/30 dark:bg-blue-900/10 rounded-xl p-5 border border-blue-100 dark:border-blue-800/40">
+                                <h5 class="text-xs font-bold text-blue-500 uppercase tracking-wider mb-3 flex items-center justify-between">
+                                    <span>Supervisor Review</span>
+                                    <span class="text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded font-bold">{{ score.supervisor_score|default:"-" }} / {{ appraisal.cycle.scoring_scale }}</span>
+                                </h5>
+                                <p class="text-sm text-slate-600 dark:text-slate-400 italic">"{{ score.supervisor_comment|default:'No comment provided.' }}"</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- ══════════ COMPETENCIES (READ ONLY) ══════════ -->
+        <div class="space-y-6 mt-12">
+            <h2 class="text-xl font-extrabold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-2">
+                4. Core Competencies Breakdown
+            </h2>
+            
+            {% for cat_data in comp_scores_by_cat %}
+            <div class="bg-white dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-sm mb-6">
+                <div class="px-6 py-4 bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800 dark:text-slate-200">{{ cat_data.category.name }}</h3>
+                </div>
+                <div class="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {% for score in cat_data.scores %}
+                    <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-1">
+                            <h4 class="font-bold text-slate-800 dark:text-slate-100">{{ score.competency_item.name }}</h4>
+                        </div>
+                        <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            <div class="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-100 dark:border-slate-800/60 flex flex-col justify-between">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-400 uppercase mb-2">Staff: <span class="text-slate-700 dark:text-slate-300 ml-1">{{ score.self_score|default:"-" }} / {{ appraisal.cycle.scoring_scale }}</span></p>
+                                    <p class="text-slate-600 dark:text-slate-400 italic">"{{ score.staff_comment|default:'No comment provided.' }}"</p>
+                                </div>
+                                {% if score.evidence_file %}
+                                <a href="{{ score.evidence_file.url }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-500 font-bold bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 mt-2 self-start">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                    Evidence
+                                </a>
+                                {% endif %}
+                            </div>
+                            <div class="bg-blue-50/30 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-800/40">
+                                <p class="text-xs font-bold text-blue-500 uppercase mb-2">Sup: <span class="text-blue-700 dark:text-blue-300 ml-1">{{ score.supervisor_score|default:"-" }} / {{ appraisal.cycle.scoring_scale }}</span></p>
+                                <p class="text-slate-600 dark:text-slate-400 italic">"{{ score.supervisor_comment|default:'No comment provided.' }}"</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- ══════════ HOD FINAL DECISION ══════════ -->
+        <div class="space-y-6 mt-16 mb-10">
+            <h2 class="text-2xl font-extrabold text-amber-600 dark:text-amber-500 flex items-center gap-3">
+                <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                HOD Final Approval
+            </h2>
+            
+            <div class="bg-white dark:bg-slate-900/80 border-2 border-amber-200 dark:border-amber-800/50 rounded-2xl p-6 lg:p-8 shadow-md">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block font-bold text-slate-800 dark:text-slate-200 mb-2">HOD Comments (Optional)</label>
+                        <p class="text-xs text-slate-500 mb-3">Add any final remarks. This will be visible to both the staff member and their supervisor upon approval/return.</p>
+                        <textarea name="comments" rows="3" {% if not is_editable %}disabled{% endif %}
+                                  class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition resize-none">{{ hod_review.comments }}</textarea>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-end gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                        {% if is_editable %}
+                        <div x-data="{ openReturnModal: false }">
+                            <button type="button" @click="openReturnModal = true" 
+                                    class="px-6 py-3 rounded-xl text-sm font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/40 border border-rose-200 dark:border-rose-800/40 transition">
+                                Return to Supervisor for Revision
+                            </button>
+
+                            <!-- Modal -->
+                            <div x-show="openReturnModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+                                <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+                                    <div x-show="openReturnModal" 
+                                         x-transition:enter="ease-out duration-300" 
+                                         x-transition:enter-start="opacity-0" 
+                                         x-transition:enter-end="opacity-100" 
+                                         x-transition:leave="ease-in duration-200" 
+                                         x-transition:leave-start="opacity-100" 
+                                         x-transition:leave-end="opacity-0" 
+                                         @click="openReturnModal = false" class="fixed inset-0 transition-opacity bg-slate-900/75 dark:bg-slate-900/90" aria-hidden="true"></div>
+
+                                    <div x-show="openReturnModal" 
+                                         x-transition:enter="ease-out duration-300" 
+                                         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                                         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                                         x-transition:leave="ease-in duration-200" 
+                                         x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                                         x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                                         class="inline-block w-full max-w-lg p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 relative z-10">
+                                        <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mb-2">Return to Supervisor</h3>
+                                        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">You are about to return this appraisal to the supervisor for revision. Would you like to provide a reason? (Optional)</p>
+                                        
+                                        <textarea name="return_comment" rows="3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition resize-none mb-6" placeholder="Reason for returning..."></textarea>
+                                        
+                                        <div class="flex justify-end gap-3">
+                                            <button type="button" @click="openReturnModal = false" class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition">Cancel</button>
+                                            <button type="submit" name="action" value="return_to_supervisor" class="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-500 transition shadow-sm">Confirm Return</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" name="action" value="approve"
+                                class="px-8 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-md shadow-amber-500/25 transition flex items-center gap-2">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            Approve Appraisal
+                        </button>
+                        {% else %}
+                            <div class="flex flex-col items-end">
+                                {% if appraisal.status == 'APPROVED' %}
+                                <p class="text-lg font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Appraisal Approved
+                                </p>
+                                <p class="text-xs text-slate-500 mt-1">This appraisal has been finalized.</p>
+                                {% elif appraisal.status == 'RETURNED_TO_SUPERVISOR' %}
+                                <p class="text-lg font-black text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    Returned to Supervisor
+                                </p>
+                                <p class="text-xs text-slate-500 mt-1">Waiting for the supervisor to revise and resubmit.</p>
+                                {% else %}
+                                <p class="text-lg font-black text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Status: {{ appraisal.get_status_display }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}

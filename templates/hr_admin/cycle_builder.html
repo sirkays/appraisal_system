@@ -1,0 +1,351 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cycle Builder: {{ cycle.name }}{% endblock %}
+
+{% block content %}
+<div class="px-4 py-8" x-data="cycleBuilder({{ cycle.id }})">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        <div>
+            <div class="flex items-center gap-3">
+                <a href="{% url 'hr_admin:cycle_list' %}" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </a>
+                <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight" x-text="cycle.name"></h1>
+                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800" x-text="cycle.status"></span>
+            </div>
+            <p class="mt-1 text-sm text-gray-500 ml-9">Configure the appraisal fields and logic for this cycle.</p>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <button @click="saveCycle()" :disabled="isSaving" class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                <svg x-show="isSaving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span x-text="isSaving ? 'Saving...' : 'Save Configuration'"></span>
+            </button>
+            <button @click="activateCycle()" x-show="cycle.status === 'DRAFT'" class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                Activate Cycle
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div x-show="toast.show" x-transition class="fixed bottom-4 right-4 z-50 rounded-lg p-4 shadow-lg border"
+         :class="toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'"
+         style="display: none;">
+        <div class="flex items-center gap-3">
+            <svg x-show="toast.type === 'success'" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            <svg x-show="toast.type === 'error'" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            <span class="font-medium text-sm" x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-6 border-b border-gray-200">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button @click="activeTab = 'general'" :class="activeTab === 'general' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                General Settings
+            </button>
+            <button @click="activeTab = 'narrative'" :class="activeTab === 'narrative' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Narrative Fields
+            </button>
+            <button @click="activeTab = 'kpis'" :class="activeTab === 'kpis' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                KPIs & Core Duties
+            </button>
+            <button @click="activeTab = 'competencies'" :class="activeTab === 'competencies' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Competencies
+            </button>
+        </nav>
+    </div>
+
+    <div class="bg-white shadow sm:rounded-xl border border-gray-200 p-6 min-h-[500px]">
+        
+        <!-- Tab 1: General -->
+        <div x-show="activeTab === 'general'" style="display: none;">
+            <div class="max-w-2xl space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Cycle Name</label>
+                    <input type="text" x-model="cycle.name" class="mt-1 shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border">
+                </div>
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Start Date</label>
+                        <input type="date" x-model="cycle.start_date" class="mt-1 shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">End Date</label>
+                        <input type="date" x-model="cycle.end_date" class="mt-1 shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Scoring Scale Maximum</label>
+                    <select x-model="cycle.scoring_scale" class="mt-1 shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border">
+                        <option value="5">1 to 5</option>
+                        <option value="10">1 to 10</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Narrative Fields -->
+        <div x-show="activeTab === 'narrative'" style="display: none;">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900">Narrative Fields</h3>
+                    <p class="text-sm text-gray-500">Define the open-ended text fields that appear on the appraisal form.</p>
+                </div>
+                <button @click="addNarrativeField()" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none">
+                    + Add Field
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <template x-for="(field, index) in cycle.narrative_fields" :key="index">
+                    <div x-show="!field.deleted" class="flex items-start gap-4 p-4 border border-gray-200 rounded-lg bg-gray-50 relative">
+                        <div class="flex-1 space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700">Field Name / Question</label>
+                                <input type="text" x-model="field.name" placeholder="e.g. Major Achievements during the period" class="mt-1 shadow-sm block w-full sm:text-sm border-gray-300 rounded-md py-1.5 px-3 border">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" x-model="field.is_supervisor_field" :id="'sup_' + index" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4">
+                                <label :for="'sup_' + index" class="text-sm text-gray-700">This field is strictly for the Supervisor (Staff cannot edit)</label>
+                            </div>
+                        </div>
+                        <div class="pt-6">
+                            <button @click="field.deleted = true" class="text-red-500 hover:text-red-700 p-1 bg-white rounded shadow-sm border border-gray-200" title="Remove Field">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="cycle.narrative_fields.filter(f => !f.deleted).length === 0" class="text-center py-8 text-sm text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                    No narrative fields added yet.
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: KPIs -->
+        <div x-show="activeTab === 'kpis'" style="display: none;">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900">KPIs / Core Duties</h3>
+                    <p class="text-sm text-gray-500">Group required KPIs into categories. Each item will be scored by both staff and supervisor.</p>
+                </div>
+                <button @click="addCategory('kpi_categories')" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none">
+                    + Add Category
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <template x-for="(cat, cIndex) in cycle.kpi_categories" :key="cIndex">
+                    <div x-show="!cat.deleted" class="border border-gray-200 rounded-xl overflow-hidden">
+                        <div class="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
+                            <div class="flex-1 mr-4">
+                                <input type="text" x-model="cat.name" placeholder="Category Name (e.g. Strategic Goals)" class="font-semibold shadow-sm block w-full sm:text-sm border-gray-300 rounded-md py-1.5 px-3 border bg-white">
+                            </div>
+                            <div class="w-32 mr-4">
+                                <div class="relative rounded-md shadow-sm">
+                                    <input type="number" x-model="cat.weight" class="block w-full sm:text-sm border-gray-300 rounded-md py-1.5 pr-10 border" placeholder="Weight">
+                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <span class="text-gray-500 sm:text-sm">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button @click="cat.deleted = true" class="text-red-500 hover:text-red-700 p-1.5 bg-white rounded shadow-sm border border-gray-200" title="Delete Category">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                        <div class="p-4 bg-white space-y-3">
+                            <template x-for="(item, iIndex) in cat.items" :key="iIndex">
+                                <div x-show="!item.deleted" class="flex items-center gap-3">
+                                    <div class="w-6 flex justify-center text-gray-300">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input type="text" x-model="item.name" placeholder="Specific Item/Goal" class="shadow-sm block w-full sm:text-sm border-gray-300 rounded-md py-1.5 px-3 border">
+                                    </div>
+                                    <div class="w-24">
+                                        <input type="number" x-model="item.weight" placeholder="Wt %" class="shadow-sm block w-full sm:text-sm border-gray-300 rounded-md py-1.5 px-3 border">
+                                    </div>
+                                    <button @click="item.deleted = true" class="text-red-400 hover:text-red-600 p-1" title="Remove Item">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                            </template>
+                            <div class="pl-9 pt-2">
+                                <button @click="addItem(cat)" class="text-xs font-medium text-blue-600 hover:text-blue-800">
+                                    + Add Item
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="cycle.kpi_categories.filter(c => !c.deleted).length === 0" class="text-center py-8 text-sm text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                    No KPI categories added yet.
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Competencies -->
+        <div x-show="activeTab === 'competencies'" style="display: none;">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900">Competencies</h3>
+                    <p class="text-sm text-gray-500">Group scorable traits/behaviors (e.g. Leadership, Teamwork).</p>
+                </div>
+                <button @click="addCategory('competency_categories')" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none">
+                    + Add Category
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <template x-for="(cat, cIndex) in cycle.competency_categories" :key="cIndex">
+                    <div x-show="!cat.deleted" class="border border-gray-200 rounded-xl overflow-hidden">
+                        <div class="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
+                            <div class="flex-1 mr-4">
+                                <input type="text" x-model="cat.name" placeholder="Category Name (e.g. Interpersonal Skills)" class="font-semibold shadow-sm block w-full sm:text-sm border-gray-300 rounded-md py-1.5 px-3 border bg-white">
+                            </div>
+                            <div class="w-32 mr-4">
+                                <div class="relative rounded-md shadow-sm">
+                                    <input type="number" x-model="cat.weight" class="block w-full sm:text-sm border-gray-300 rounded-md py-1.5 pr-10 border" placeholder="Weight">
+                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <span class="text-gray-500 sm:text-sm">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button @click="cat.deleted = true" class="text-red-500 hover:text-red-700 p-1.5 bg-white rounded shadow-sm border border-gray-200" title="Delete Category">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                        <div class="p-4 bg-white space-y-3">
+                            <template x-for="(item, iIndex) in cat.items" :key="iIndex">
+                                <div x-show="!item.deleted" class="flex items-center gap-3">
+                                    <div class="w-6 flex justify-center text-gray-300">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input type="text" x-model="item.name" placeholder="Specific Competency (e.g. Communication)" class="shadow-sm block w-full sm:text-sm border-gray-300 rounded-md py-1.5 px-3 border">
+                                    </div>
+                                    <div class="w-24">
+                                        <input type="number" x-model="item.weight" placeholder="Wt %" class="shadow-sm block w-full sm:text-sm border-gray-300 rounded-md py-1.5 px-3 border">
+                                    </div>
+                                    <button @click="item.deleted = true" class="text-red-400 hover:text-red-600 p-1" title="Remove Item">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                            </template>
+                            <div class="pl-9 pt-2">
+                                <button @click="addItem(cat)" class="text-xs font-medium text-blue-600 hover:text-blue-800">
+                                    + Add Item
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="cycle.competency_categories.filter(c => !c.deleted).length === 0" class="text-center py-8 text-sm text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                    No competency categories added yet.
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Alpine JS Logic -->
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('cycleBuilder', (cycleId) => ({
+            activeTab: 'general',
+            isSaving: false,
+            toast: { show: false, message: '', type: '' },
+            cycle: {
+                id: cycleId,
+                name: '{{ cycle.name|escapejs }}',
+                status: '{{ cycle.status }}',
+                start_date: '{{ cycle.start_date|date:"Y-m-d"|default:"" }}',
+                end_date: '{{ cycle.end_date|date:"Y-m-d"|default:"" }}',
+                scoring_scale: {{ cycle.scoring_scale }},
+                narrative_fields: [
+                    {% for nf in cycle.narrative_fields.all %}
+                    { id: {{ nf.id }}, name: '{{ nf.name|escapejs }}', is_supervisor_field: {{ nf.is_supervisor_field|yesno:"true,false" }}, deleted: false, order: {{ nf.order }} },
+                    {% endfor %}
+                ],
+                kpi_categories: [
+                    {% for cat in cycle.kpi_categories.all %}
+                    { id: {{ cat.id }}, name: '{{ cat.name|escapejs }}', weight: {{ cat.weight|default:0 }}, deleted: false, order: {{ cat.order }}, items: [
+                        {% for item in cat.items.all %}
+                        { id: {{ item.id }}, name: '{{ item.name|escapejs }}', weight: {{ item.weight|default:0 }}, deleted: false, order: {{ item.order }} },
+                        {% endfor %}
+                    ]},
+                    {% endfor %}
+                ],
+                competency_categories: [
+                    {% for cat in cycle.competency_categories.all %}
+                    { id: {{ cat.id }}, name: '{{ cat.name|escapejs }}', weight: {{ cat.weight|default:0 }}, deleted: false, order: {{ cat.order }}, items: [
+                        {% for item in cat.items.all %}
+                        { id: {{ item.id }}, name: '{{ item.name|escapejs }}', weight: {{ item.weight|default:0 }}, deleted: false, order: {{ item.order }} },
+                        {% endfor %}
+                    ]},
+                    {% endfor %}
+                ]
+            },
+
+            addNarrativeField() {
+                this.cycle.narrative_fields.push({ id: null, name: '', is_supervisor_field: false, deleted: false, order: this.cycle.narrative_fields.length });
+            },
+
+            addCategory(type) {
+                this.cycle[type].push({ id: null, name: '', weight: 0, deleted: false, order: this.cycle[type].length, items: [] });
+            },
+
+            addItem(category) {
+                category.items.push({ id: null, name: '', weight: 0, deleted: false, order: category.items.length });
+            },
+
+            showToast(message, type) {
+                this.toast = { show: true, message, type };
+                setTimeout(() => { this.toast.show = false; }, 3000);
+            },
+
+            async saveCycle() {
+                this.isSaving = true;
+                try {
+                    const response = await fetch(`{% url 'hr_admin:cycle_edit' cycle.id %}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(this.cycle)
+                    });
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        this.showToast('Configuration saved successfully!', 'success');
+                        // Optional: Reload to get new DB IDs
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        this.showToast(data.message || 'Error saving cycle.', 'error');
+                    }
+                } catch (e) {
+                    this.showToast('Network error occurred.', 'error');
+                } finally {
+                    this.isSaving = false;
+                }
+            },
+            
+            async activateCycle() {
+                if (confirm('Are you sure you want to activate this cycle? This will lock the configuration and allow staff to begin appraisals.')) {
+                    this.cycle.status = 'ACTIVE';
+                    await this.saveCycle();
+                }
+            }
+        }));
+    });
+</script>
+{% endblock %}

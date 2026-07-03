@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Staff Performance Appraisal System — State Internal Revenue Service — Implementation Plan</title>
+  <meta name="description" content="Implementation plan for a web-based staff performance appraisal system for a State Internal Revenue Service." />
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --paper: #ffffff;
+      --ink: #14213d;
+      --muted: #5c657a;
+      --line: #dbe2ee;
+      --primary: #173b7a;
+      --primary-2: #0f766e;
+      --accent: #f59e0b;
+      --soft: #eef5ff;
+      --soft-2: #ecfdf5;
+      --danger-soft: #fff7ed;
+      --shadow: 0 24px 65px rgba(15, 23, 42, .10);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top left, #dcecff 0, transparent 32rem), var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      line-height: 1.65;
+    }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .page { max-width: 1180px; margin: 0 auto; padding: 28px 22px 64px; }
+    .hero {
+      background: linear-gradient(135deg, #102b5c, #0f766e 70%);
+      color: white;
+      border-radius: 28px;
+      padding: 44px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero:after {
+      content: "";
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      right: -110px;
+      top: -130px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: #dcfce7;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.20);
+      border-radius: 999px;
+      padding: 8px 12px;
+    }
+    .hero h1 { margin: 20px 0 12px; font-size: clamp(32px, 5vw, 56px); line-height: 1.03; letter-spacing: -.04em; }
+    .hero p { max-width: 850px; font-size: 18px; color: rgba(255,255,255,.88); margin: 0; }
+    .hero-actions { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn {
+      border: 0;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 11px 16px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 14px;
+      box-shadow: 0 8px 20px rgba(15,23,42,.16);
+    }
+    .btn-primary { background: white; color: var(--primary); }
+    .btn-secondary { background: rgba(255,255,255,.13); color: white; border: 1px solid rgba(255,255,255,.28); }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin: 20px 0 26px;
+    }
+    .meta-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, .06);
+    }
+    .meta-card strong { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    .meta-card span { display: block; color: var(--ink); font-size: 20px; font-weight: 900; margin-top: 5px; }
+    .layout { display: grid; grid-template-columns: 295px minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 24px; }
+    .toc {
+      position: sticky;
+      top: 18px;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      background: rgba(255,255,255,.82);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, .08);
+    }
+    .toc-title { font-weight: 900; margin-bottom: 10px; color: var(--ink); }
+    .toc a { display: block; padding: 7px 8px; border-radius: 10px; color: var(--muted); font-size: 13px; line-height: 1.35; }
+    .toc a:hover { background: var(--soft); color: var(--primary); text-decoration: none; }
+    .toc .toc-h3 { padding-left: 22px; font-size: 12px; }
+    .content {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 34px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+    .content > h1:first-child { display: none; }
+    h2 {
+      margin-top: 46px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.18;
+      letter-spacing: -.025em;
+      color: var(--primary);
+    }
+    h2:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+    h3 {
+      margin-top: 34px;
+      font-size: 22px;
+      color: #0f2f63;
+    }
+    h4 { margin-top: 26px; font-size: 18px; color: var(--primary-2); }
+    p { margin: 12px 0; }
+    .content strong { color: #0f2f63; }
+    hr { border: 0; height: 1px; background: var(--line); margin: 30px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0 24px;
+      overflow: hidden;
+      border-radius: 14px;
+      font-size: 14px;
+      box-shadow: 0 0 0 1px var(--line);
+    }
+    th { background: #eff6ff; color: var(--primary); text-align: left; font-weight: 900; }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    tr:last-child td { border-bottom: 0; }
+    tr:nth-child(even) td { background: #fbfdff; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    blockquote {
+      margin: 20px 0;
+      padding: 16px 18px;
+      border-left: 5px solid var(--accent);
+      background: var(--danger-soft);
+      border-radius: 14px;
+      color: #633a00;
+    }
+    code {
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 2px 6px;
+      border-radius: 7px;
+      font-size: .92em;
+    }
+    .code-block {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 16px;
+      overflow: auto;
+      padding: 18px;
+      border: 1px solid #1e293b;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+    .code-block code { background: transparent; color: inherit; padding: 0; white-space: pre; }
+    .diagram-shell {
+      margin: 22px 0 28px;
+      background: #fbfdff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      overflow: auto;
+    }
+    .diagram-label {
+      display: inline-block;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 900;
+      color: var(--primary-2);
+      background: var(--soft-2);
+      border-radius: 999px;
+      padding: 6px 10px;
+      margin-bottom: 12px;
+    }
+    .mermaid { min-width: 760px; text-align: center; }
+    .diagram-source { margin-top: 10px; color: var(--muted); }
+    .diagram-source summary { cursor: pointer; font-weight: 800; }
+    .diagram-source pre { background: #f8fafc; color: #334155; border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow: auto; }
+    .summary-strip {
+      margin: 22px 0 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .summary-pill {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.13);
+      border: 1px solid rgba(255,255,255,.22);
+      color: white;
+    }
+    .summary-pill b { display: block; font-size: 13px; opacity: .8; text-transform: uppercase; letter-spacing: .06em; }
+    .summary-pill span { display: block; font-weight: 900; font-size: 18px; margin-top: 3px; }
+    .note {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      color: var(--muted);
+      margin: 18px 0;
+    }
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      margin-top: 26px;
+      font-size: 13px;
+    }
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { position: relative; top: auto; max-height: none; }
+      .meta-grid, .summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero { padding: 30px; }
+      .content { padding: 24px; }
+    }
+    @media (max-width: 640px) {
+      .page { padding: 16px 12px 42px; }
+      .hero { border-radius: 20px; padding: 24px; }
+      .meta-grid, .summary-strip { grid-template-columns: 1fr; }
+      .content { border-radius: 18px; padding: 18px; }
+      th, td { padding: 10px; }
+      table { display: block; overflow-x: auto; white-space: normal; }
+    }
+    @media print {
+      body { background: white; }
+      .page { max-width: none; padding: 0; }
+      .hero, .content, .toc, .meta-card { box-shadow: none; }
+      .toc, .hero-actions, .diagram-source { display: none; }
+      .layout { display: block; }
+      .content { border: 0; padding: 0; }
+      h2 { page-break-after: avoid; }
+      table, .diagram-shell, pre { break-inside: avoid; }
+      a { color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="eyebrow">Implementation Plan</div>
+      <h1>Staff Performance Appraisal System — State Internal Revenue Service</h1>
+      <p>A complete single-file HTML version of the staff appraisal implementation plan, covering roles, workflows, pages, data flow, folder structure, delivery phases, open questions, and verification activities.</p>
+      <div class="summary-strip">
+        <div class="summary-pill"><b>System Type</b><span>Web-Based Appraisal Portal</span></div>
+        <div class="summary-pill"><b>Primary Users</b><span>Staff, Supervisors, HOD, HR/Admin</span></div>
+        <div class="summary-pill"><b>MVP Stack</b><span>HTML, Tailwind, Alpine.js, Chart.js</span></div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-primary" onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn btn-secondary" href="#overview">Start Reading</a>
+      </div>
+    </header>
+
+    <section class="meta-grid" aria-label="Document metadata">
+      <div class="meta-card"><strong>Prepared For</strong><span>State Internal Revenue Service</span></div>
+      <div class="meta-card"><strong>Document Type</strong><span>Implementation Plan</span></div>
+      <div class="meta-card"><strong>Generated</strong><span>July 01, 2026</span></div>
+      <div class="meta-card"><strong>Delivery Format</strong><span>Single HTML File</span></div>
+    </section>
+
+    <main class="layout">
+      <aside class="toc" aria-label="Table of contents">
+        <div class="toc-title">Contents</div>
+        <a class="toc-h2" href="#overview">Overview</a>
+<a class="toc-h2" href="#user-roles">User Roles</a>
+<a class="toc-h2" href="#system-flow-how-appraisals-move">System Flow (How Appraisals Move)</a>
+<a class="toc-h2" href="#page-map-navigation-structure">Page Map &amp;amp; Navigation Structure</a>
+<a class="toc-h2" href="#detailed-page-descriptions">Detailed Page Descriptions</a>
+<a class="toc-h3" href="#1-login-page-loginhtml">1. Login Page (login.html)</a>
+<a class="toc-h3" href="#2-forgot-password-page-forgot-passwordhtml">2. Forgot Password Page (forgot-password.html)</a>
+<a class="toc-h3" href="#3-staff-dashboard-staffdashboardhtml">3. Staff Dashboard (staff/dashboard.html)</a>
+<a class="toc-h3" href="#4-self-appraisal-form-staffself-appraisalhtml">4. Self-Appraisal Form (staff/self-appraisal.html)</a>
+<a class="toc-h3" href="#5-appraisal-history-staffhistoryhtml">5. Appraisal History (staff/history.html)</a>
+<a class="toc-h3" href="#6-my-profile-staffprofilehtml">6. My Profile (staff/profile.html)</a>
+<a class="toc-h3" href="#7-supervisor-dashboard-supervisordashboardhtml">7. Supervisor Dashboard (supervisor/dashboard.html)</a>
+<a class="toc-h3" href="#8-team-members-list-supervisorteamhtml">8. Team Members List (supervisor/team.html)</a>
+<a class="toc-h3" href="#9-supervisor-review-score-form-supervisorreviewhtml">9. Supervisor Review &amp;amp; Score Form (supervisor/review.html)</a>
+<a class="toc-h3" href="#10-hod-dashboard-hoddashboardhtml">10. HOD Dashboard (hod/dashboard.html)</a>
+<a class="toc-h3" href="#11-department-appraisals-list-hodappraisalshtml">11. Department Appraisals List (hod/appraisals.html)</a>
+<a class="toc-h3" href="#12-hod-approvereject-view-hodreviewhtml">12. HOD Approve/Reject View (hod/review.html)</a>
+<a class="toc-h3" href="#13-adminhr-dashboard-admindashboardhtml">13. Admin/HR Dashboard (admin/dashboard.html)</a>
+<a class="toc-h3" href="#14-manage-appraisal-cycles-admincycleshtml">14. Manage Appraisal Cycles (admin/cycles.html)</a>
+<a class="toc-h3" href="#15-manage-staff-adminstaffhtml">15. Manage Staff (admin/staff.html)</a>
+<a class="toc-h3" href="#16-manage-departments-admindepartmentshtml">16. Manage Departments (admin/departments.html)</a>
+<a class="toc-h3" href="#17-reports-analytics-adminreportshtml">17. Reports &amp;amp; Analytics (admin/reports.html)</a>
+<a class="toc-h3" href="#18-system-settings-adminsettingshtml">18. System Settings (admin/settings.html)</a>
+<a class="toc-h2" href="#data-flow-summary">Data Flow Summary</a>
+<a class="toc-h2" href="#file-folder-structure">File &amp;amp; Folder Structure</a>
+<a class="toc-h2" href="#phased-delivery-plan">Phased Delivery Plan</a>
+<a class="toc-h3" href="#phase-1-mvp-current-build">Phase 1 — MVP (Current Build)</a>
+<a class="toc-h3" href="#phase-2-enhancements">Phase 2 — Enhancements</a>
+<a class="toc-h3" href="#phase-3-advanced">Phase 3 — Advanced</a>
+<a class="toc-h2" href="#open-questions">Open Questions</a>
+<a class="toc-h2" href="#verification-plan">Verification Plan</a>
+<a class="toc-h3" href="#automated-tests">Automated Tests</a>
+<a class="toc-h3" href="#manual-verification">Manual Verification</a>
+      </aside>
+      <article class="content">
+        <div class="note"><strong>Reading guide:</strong> This document preserves the full plan and organizes it for review, presentation, printing, and implementation tracking.</div>
+        <h1 id="staff-performance-appraisal-system-state-internal-revenue-service">Staff Performance Appraisal System — State Internal Revenue Service</h1>
+<h2 id="overview">Overview</h2>
+<p>A web-based staff performance appraisal system that enables the State Internal Revenue Service to evaluate employee performance through a structured, multi-level review process. The system supports <strong>self-assessment</strong>, <strong>supervisor review</strong>, <strong>department head approval</strong>, and <strong>HR/Admin oversight</strong>.</p>
+<p><strong>Tech Stack</strong>: HTML, Tailwind CSS, Alpine.js (lightweight reactivity), Chart.js (dashboards), LocalStorage/JSON (Phase 1 data persistence — upgradeable to a backend later).</p>
+<hr />
+<h2 id="user-roles">User Roles</h2>
+<table>
+<thead>
+<tr>
+  <th>Role</th>
+  <th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Staff</strong></td>
+  <td>Regular employee — submits self-appraisal</td>
+</tr>
+<tr>
+  <td><strong>Supervisor</strong></td>
+  <td>Direct manager — reviews and scores subordinates</td>
+</tr>
+<tr>
+  <td><strong>HOD</strong> (Head of Department)</td>
+  <td>Department head — approves/reviews departmental appraisals</td>
+</tr>
+<tr>
+  <td><strong>HR/Admin</strong></td>
+  <td>Human Resources — manages cycles, views reports, system config</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="system-flow-how-appraisals-move">System Flow (How Appraisals Move)</h2>
+<div class="diagram-shell"><div class="diagram-label">Workflow / Navigation Diagram</div><div class="mermaid">flowchart TD
+    A[&quot;HR Creates Appraisal Cycle&quot;] --&gt; B[&quot;Staff Receives Notification&quot;]
+    B --&gt; C[&quot;Staff Completes Self-Appraisal&quot;]
+    C --&gt; D[&quot;Supervisor Reviews &amp; Scores&quot;]
+    D --&gt; E{&quot;Supervisor Satisfied?&quot;}
+    E -- Yes --&gt; F[&quot;HOD Reviews &amp; Approves&quot;]
+    E -- No --&gt; G[&quot;Return to Staff with Comments&quot;]
+    G --&gt; C
+    F --&gt; H{&quot;HOD Satisfied?&quot;}
+    H -- Yes --&gt; I[&quot;HR Final Review &amp; Archive&quot;]
+    H -- No --&gt; J[&quot;Return to Supervisor with Comments&quot;]
+    J --&gt; D
+    I --&gt; K[&quot;Reports &amp; Analytics Generated&quot;]
+</div><details class="diagram-source"><summary>View diagram source</summary><pre><code>flowchart TD
+    A[&quot;HR Creates Appraisal Cycle&quot;] --&gt; B[&quot;Staff Receives Notification&quot;]
+    B --&gt; C[&quot;Staff Completes Self-Appraisal&quot;]
+    C --&gt; D[&quot;Supervisor Reviews &amp; Scores&quot;]
+    D --&gt; E{&quot;Supervisor Satisfied?&quot;}
+    E -- Yes --&gt; F[&quot;HOD Reviews &amp; Approves&quot;]
+    E -- No --&gt; G[&quot;Return to Staff with Comments&quot;]
+    G --&gt; C
+    F --&gt; H{&quot;HOD Satisfied?&quot;}
+    H -- Yes --&gt; I[&quot;HR Final Review &amp; Archive&quot;]
+    H -- No --&gt; J[&quot;Return to Supervisor with Comments&quot;]
+    J --&gt; D
+    I --&gt; K[&quot;Reports &amp; Analytics Generated&quot;]
+</code></pre></details></div>
+<hr />
+<h2 id="page-map-navigation-structure">Page Map &amp; Navigation Structure</h2>
+<div class="diagram-shell"><div class="diagram-label">Workflow / Navigation Diagram</div><div class="mermaid">flowchart LR
+    subgraph Public
+        LP[&quot;Login Page&quot;]
+        FP[&quot;Forgot Password&quot;]
+    end
+
+    subgraph Staff_Portal[&quot;Staff Portal&quot;]
+        SD[&quot;Staff Dashboard&quot;]
+        SA[&quot;Self-Appraisal Form&quot;]
+        SH[&quot;My Appraisal History&quot;]
+        SP[&quot;My Profile&quot;]
+    end
+
+    subgraph Supervisor_Portal[&quot;Supervisor Portal&quot;]
+        SVD[&quot;Supervisor Dashboard&quot;]
+        SVT[&quot;Team Members List&quot;]
+        SVR[&quot;Review &amp; Score Form&quot;]
+        SVH[&quot;Team Appraisal History&quot;]
+    end
+
+    subgraph HOD_Portal[&quot;HOD Portal&quot;]
+        HD[&quot;HOD Dashboard&quot;]
+        HDL[&quot;Department Appraisals&quot;]
+        HDA[&quot;Approve/Reject View&quot;]
+    end
+
+    subgraph HR_Admin[&quot;HR / Admin Portal&quot;]
+        AD[&quot;Admin Dashboard&quot;]
+        AC[&quot;Manage Appraisal Cycles&quot;]
+        AM[&quot;Manage Staff&quot;]
+        AD2[&quot;Manage Departments&quot;]
+        AR[&quot;Reports &amp; Analytics&quot;]
+        AS[&quot;System Settings&quot;]
+    end
+
+    LP --&gt; SD &amp; SVD &amp; HD &amp; AD
+    LP --&gt; FP
+    SD --&gt; SA &amp; SH &amp; SP
+    SVD --&gt; SVT --&gt; SVR
+    SVD --&gt; SVH
+    HD --&gt; HDL --&gt; HDA
+    AD --&gt; AC &amp; AM &amp; AD2 &amp; AR &amp; AS
+</div><details class="diagram-source"><summary>View diagram source</summary><pre><code>flowchart LR
+    subgraph Public
+        LP[&quot;Login Page&quot;]
+        FP[&quot;Forgot Password&quot;]
+    end
+
+    subgraph Staff_Portal[&quot;Staff Portal&quot;]
+        SD[&quot;Staff Dashboard&quot;]
+        SA[&quot;Self-Appraisal Form&quot;]
+        SH[&quot;My Appraisal History&quot;]
+        SP[&quot;My Profile&quot;]
+    end
+
+    subgraph Supervisor_Portal[&quot;Supervisor Portal&quot;]
+        SVD[&quot;Supervisor Dashboard&quot;]
+        SVT[&quot;Team Members List&quot;]
+        SVR[&quot;Review &amp; Score Form&quot;]
+        SVH[&quot;Team Appraisal History&quot;]
+    end
+
+    subgraph HOD_Portal[&quot;HOD Portal&quot;]
+        HD[&quot;HOD Dashboard&quot;]
+        HDL[&quot;Department Appraisals&quot;]
+        HDA[&quot;Approve/Reject View&quot;]
+    end
+
+    subgraph HR_Admin[&quot;HR / Admin Portal&quot;]
+        AD[&quot;Admin Dashboard&quot;]
+        AC[&quot;Manage Appraisal Cycles&quot;]
+        AM[&quot;Manage Staff&quot;]
+        AD2[&quot;Manage Departments&quot;]
+        AR[&quot;Reports &amp; Analytics&quot;]
+        AS[&quot;System Settings&quot;]
+    end
+
+    LP --&gt; SD &amp; SVD &amp; HD &amp; AD
+    LP --&gt; FP
+    SD --&gt; SA &amp; SH &amp; SP
+    SVD --&gt; SVT --&gt; SVR
+    SVD --&gt; SVH
+    HD --&gt; HDL --&gt; HDA
+    AD --&gt; AC &amp; AM &amp; AD2 &amp; AR &amp; AS
+</code></pre></details></div>
+<hr />
+<h2 id="detailed-page-descriptions">Detailed Page Descriptions</h2>
+<hr />
+<h3 id="1-login-page-loginhtml">1. Login Page (<code>login.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Single entry point for all users.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Element</th>
+  <th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Staff ID / Email field</td>
+  <td>Text input</td>
+</tr>
+<tr>
+  <td>Password field</td>
+  <td>Password input</td>
+</tr>
+<tr>
+  <td>&quot;Forgot Password&quot; link</td>
+  <td>Navigates to <code>forgot-password.html</code></td>
+</tr>
+<tr>
+  <td>Login button</td>
+  <td>Authenticates and redirects based on role</td>
+</tr>
+<tr>
+  <td>Role indicator</td>
+  <td>Shown after login or auto-detected from credentials</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Behavior</strong>:</p>
+<ul>
+<li>On successful login → redirect to the appropriate <strong>role-based dashboard</strong></li>
+<li>Invalid credentials → inline error message</li>
+<li>Session stored in LocalStorage (Phase 1) / JWT token (Phase 2)</li>
+</ul>
+<p><strong>Connects to</strong>: Staff Dashboard, Supervisor Dashboard, HOD Dashboard, or Admin Dashboard (based on role)</p>
+<hr />
+<h3 id="2-forgot-password-page-forgot-passwordhtml">2. Forgot Password Page (<code>forgot-password.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Password recovery flow.</p>
+</blockquote>
+<ul>
+<li>Input: Staff ID or Email</li>
+<li>Action: Displays a confirmation message (Phase 1: placeholder; Phase 2: actual email)</li>
+<li><strong>Connects back to</strong>: Login Page</li>
+</ul>
+<hr />
+<h3 id="3-staff-dashboard-staffdashboardhtml">3. Staff Dashboard (<code>staff/dashboard.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Staff landing page after login — shows appraisal status at a glance.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Section</th>
+  <th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Welcome Banner</strong></td>
+  <td>&quot;Hello, [Name]&quot; + current appraisal cycle info</td>
+</tr>
+<tr>
+  <td><strong>Appraisal Status Card</strong></td>
+  <td>Status badge: <code>Not Started</code> / <code>In Progress</code> / <code>Submitted</code> / <code>Reviewed</code> / <code>Approved</code></td>
+</tr>
+<tr>
+  <td><strong>Action Button</strong></td>
+  <td>&quot;Start Self-Appraisal&quot; or &quot;View Submitted Appraisal&quot; depending on status</td>
+</tr>
+<tr>
+  <td><strong>Notifications Panel</strong></td>
+  <td>Messages from supervisor (e.g., &quot;Returned for revision&quot;, &quot;Approved&quot;)</td>
+</tr>
+<tr>
+  <td><strong>Quick Stats</strong></td>
+  <td>Previous appraisal score, current cycle deadline</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Navigation Sidebar</strong>:</p>
+<ul>
+<li>Dashboard (active)</li>
+<li>Self-Appraisal Form</li>
+<li>Appraisal History</li>
+<li>My Profile</li>
+<li>Logout</li>
+</ul>
+<p><strong>Connects to</strong>: Self-Appraisal Form, Appraisal History, Profile</p>
+<hr />
+<h3 id="4-self-appraisal-form-staffself-appraisalhtml">4. Self-Appraisal Form (<code>staff/self-appraisal.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Staff fills in their performance self-assessment for the current cycle.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Section</th>
+  <th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>KPI / Performance Targets</strong></td>
+  <td>Table with: KPI Description, Target, Achievement, Self-Score (1-5), Evidence/Comments</td>
+</tr>
+<tr>
+  <td><strong>Core Competencies</strong></td>
+  <td>Rated items: Teamwork, Communication, Initiative, Punctuality, Technical Skills — each with self-rating (1-5) + comment</td>
+</tr>
+<tr>
+  <td><strong>Key Achievements</strong></td>
+  <td>Free-text textarea — bullet points of accomplishments</td>
+</tr>
+<tr>
+  <td><strong>Challenges Faced</strong></td>
+  <td>Free-text textarea</td>
+</tr>
+<tr>
+  <td><strong>Training Needs</strong></td>
+  <td>Multi-select or free text for desired training</td>
+</tr>
+<tr>
+  <td><strong>Goals for Next Period</strong></td>
+  <td>Free-text or structured list</td>
+</tr>
+<tr>
+  <td><strong>Overall Self-Rating</strong></td>
+  <td>Auto-calculated from KPI + Competency scores</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Buttons</strong>:</p>
+<ul>
+<li><code>Save as Draft</code> — saves progress, can return later</li>
+<li><code>Submit for Review</code> — locks the form and sends to supervisor</li>
+</ul>
+<p><strong>Behavior</strong>:</p>
+<ul>
+<li>If status is <code>Returned</code>, the form is editable with supervisor's comments shown inline</li>
+<li>If status is <code>Submitted</code> or beyond, the form is read-only</li>
+<li>Validation: all required fields must be filled before submission</li>
+</ul>
+<p><strong>Connects to</strong>: Staff Dashboard (back), Supervisor's review queue (on submit)</p>
+<hr />
+<h3 id="5-appraisal-history-staffhistoryhtml">5. Appraisal History (<code>staff/history.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: View past appraisal records across all cycles.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Column</th>
+  <th>Data</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Appraisal Cycle</td>
+  <td>e.g., &quot;2025 Annual Review&quot;</td>
+</tr>
+<tr>
+  <td>Date Submitted</td>
+  <td>Date</td>
+</tr>
+<tr>
+  <td>Self-Score</td>
+  <td>Number</td>
+</tr>
+<tr>
+  <td>Supervisor Score</td>
+  <td>Number</td>
+</tr>
+<tr>
+  <td>Final Score</td>
+  <td>Number</td>
+</tr>
+<tr>
+  <td>Status</td>
+  <td>Badge</td>
+</tr>
+<tr>
+  <td>Action</td>
+  <td>&quot;View Details&quot; button</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Connects to</strong>: Read-only view of any past appraisal form</p>
+<hr />
+<h3 id="6-my-profile-staffprofilehtml">6. My Profile (<code>staff/profile.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: View and edit personal information.</p>
+</blockquote>
+<ul>
+<li>Fields: Full Name, Staff ID (read-only), Department (read-only), Designation, Email, Phone</li>
+<li>Change Password section</li>
+<li><strong>Connects to</strong>: Dashboard (back)</li>
+</ul>
+<hr />
+<h3 id="7-supervisor-dashboard-supervisordashboardhtml">7. Supervisor Dashboard (<code>supervisor/dashboard.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Overview of team appraisal progress.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Section</th>
+  <th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Cycle Overview</strong></td>
+  <td>Current cycle name, deadline, progress bar</td>
+</tr>
+<tr>
+  <td><strong>Team Progress Cards</strong></td>
+  <td>Count of: Pending Self-Appraisal, Awaiting Your Review, Reviewed, Returned</td>
+</tr>
+<tr>
+  <td><strong>Pending Reviews Table</strong></td>
+  <td>List of staff who have submitted — with &quot;Review&quot; action button</td>
+</tr>
+<tr>
+  <td><strong>Notifications</strong></td>
+  <td>HOD returns, new submissions</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Connects to</strong>: Team Members List, Review Form, Team History</p>
+<hr />
+<h3 id="8-team-members-list-supervisorteamhtml">8. Team Members List (<code>supervisor/team.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Full list of direct reports with their current appraisal status.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Column</th>
+  <th>Data</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Staff Name</td>
+  <td>Name</td>
+</tr>
+<tr>
+  <td>Staff ID</td>
+  <td>ID</td>
+</tr>
+<tr>
+  <td>Designation</td>
+  <td>Title</td>
+</tr>
+<tr>
+  <td>Appraisal Status</td>
+  <td>Badge</td>
+</tr>
+<tr>
+  <td>Action</td>
+  <td>&quot;Review&quot; / &quot;View&quot; button</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Connects to</strong>: Review &amp; Score Form (for pending), Read-only view (for completed)</p>
+<hr />
+<h3 id="9-supervisor-review-score-form-supervisorreviewhtml">9. Supervisor Review &amp; Score Form (<code>supervisor/review.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Supervisor reviews staff self-appraisal and adds their own scores.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Section</th>
+  <th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Staff Info Header</strong></td>
+  <td>Name, ID, Department, Designation</td>
+</tr>
+<tr>
+  <td><strong>KPI Review Table</strong></td>
+  <td>Shows staff's self-score alongside supervisor's score column (1-5) + supervisor comments per KPI</td>
+</tr>
+<tr>
+  <td><strong>Competency Review</strong></td>
+  <td>Same side-by-side layout for each competency</td>
+</tr>
+<tr>
+  <td><strong>Staff's Achievements</strong></td>
+  <td>Read-only display of what staff wrote</td>
+</tr>
+<tr>
+  <td><strong>Supervisor's Overall Comments</strong></td>
+  <td>Free-text textarea</td>
+</tr>
+<tr>
+  <td><strong>Recommendation</strong></td>
+  <td>Dropdown: Excellent / Very Good / Good / Fair / Poor</td>
+</tr>
+<tr>
+  <td><strong>Supervisor Overall Score</strong></td>
+  <td>Auto-calculated</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Buttons</strong>:</p>
+<ul>
+<li><code>Return to Staff</code> — sends back with comments for revision</li>
+<li><code>Submit to HOD</code> — forwards for department head approval</li>
+</ul>
+<p><strong>Connects to</strong>: Supervisor Dashboard (back), HOD's approval queue (on submit), Staff form (on return)</p>
+<hr />
+<h3 id="10-hod-dashboard-hoddashboardhtml">10. HOD Dashboard (<code>hod/dashboard.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Department-level overview of all appraisals.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Section</th>
+  <th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Department Stats</strong></td>
+  <td>Total staff, completed reviews, pending approvals</td>
+</tr>
+<tr>
+  <td><strong>Pending Approvals Table</strong></td>
+  <td>Staff who have been reviewed by supervisor — awaiting HOD action</td>
+</tr>
+<tr>
+  <td><strong>Department Performance Chart</strong></td>
+  <td>Bar/pie chart of score distribution</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Connects to</strong>: Department Appraisals List, Approve/Reject View</p>
+<hr />
+<h3 id="11-department-appraisals-list-hodappraisalshtml">11. Department Appraisals List (<code>hod/appraisals.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Full list of department appraisals with filters.</p>
+</blockquote>
+<ul>
+<li>Filter by: Status, Unit, Score Range</li>
+<li>Sortable columns</li>
+<li><strong>Connects to</strong>: Approve/Reject View for each entry</li>
+</ul>
+<hr />
+<h3 id="12-hod-approvereject-view-hodreviewhtml">12. HOD Approve/Reject View (<code>hod/review.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: HOD reviews the full appraisal (staff + supervisor) and makes final departmental decision.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Section</th>
+  <th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Full Appraisal View</strong></td>
+  <td>Read-only view of staff self-appraisal + supervisor review</td>
+</tr>
+<tr>
+  <td><strong>Score Comparison</strong></td>
+  <td>Side-by-side: Self-Score vs Supervisor Score</td>
+</tr>
+<tr>
+  <td><strong>HOD Comments</strong></td>
+  <td>Free-text textarea</td>
+</tr>
+<tr>
+  <td><strong>Action</strong></td>
+  <td><code>Approve</code> / <code>Return to Supervisor</code> with comments</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Connects to</strong>: HOD Dashboard (back), HR queue (on approve), Supervisor (on return)</p>
+<hr />
+<h3 id="13-adminhr-dashboard-admindashboardhtml">13. Admin/HR Dashboard (<code>admin/dashboard.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: System-wide overview and management hub.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Section</th>
+  <th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Organization Stats</strong></td>
+  <td>Total staff, active cycle, completion rate</td>
+</tr>
+<tr>
+  <td><strong>Completion Progress</strong></td>
+  <td>Donut chart — Not Started / In Progress / Completed</td>
+</tr>
+<tr>
+  <td><strong>Department Breakdown</strong></td>
+  <td>Table of departments with completion percentages</td>
+</tr>
+<tr>
+  <td><strong>Recent Activity Feed</strong></td>
+  <td>Timeline of recent submissions and approvals</td>
+</tr>
+<tr>
+  <td><strong>Quick Actions</strong></td>
+  <td>Create New Cycle, Generate Report, Add Staff</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Connects to</strong>: All admin sub-pages</p>
+<hr />
+<h3 id="14-manage-appraisal-cycles-admincycleshtml">14. Manage Appraisal Cycles (<code>admin/cycles.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Create, edit, and manage appraisal periods.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Field</th>
+  <th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Cycle Name</td>
+  <td>e.g., &quot;2025 Q3 Appraisal&quot;</td>
+</tr>
+<tr>
+  <td>Start Date</td>
+  <td>Date picker</td>
+</tr>
+<tr>
+  <td>End Date</td>
+  <td>Date picker</td>
+</tr>
+<tr>
+  <td>Status</td>
+  <td>Draft / Active / Closed</td>
+</tr>
+<tr>
+  <td>KPI Template</td>
+  <td>Select or customize KPI categories for this cycle</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Actions</strong>: Create New, Edit, Activate, Close, Delete Draft</p>
+<hr />
+<h3 id="15-manage-staff-adminstaffhtml">15. Manage Staff (<code>admin/staff.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Staff directory and role management.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Column</th>
+  <th>Data</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Name</td>
+  <td>Full name</td>
+</tr>
+<tr>
+  <td>Staff ID</td>
+  <td>Unique ID</td>
+</tr>
+<tr>
+  <td>Department</td>
+  <td>Department name</td>
+</tr>
+<tr>
+  <td>Designation</td>
+  <td>Job title</td>
+</tr>
+<tr>
+  <td>Role</td>
+  <td>Staff / Supervisor / HOD</td>
+</tr>
+<tr>
+  <td>Supervisor</td>
+  <td>Assigned supervisor</td>
+</tr>
+<tr>
+  <td>Action</td>
+  <td>Edit / Deactivate</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Actions</strong>: Add Staff, Bulk Import (CSV), Edit, Assign Roles, Assign to Supervisor</p>
+<hr />
+<h3 id="16-manage-departments-admindepartmentshtml">16. Manage Departments (<code>admin/departments.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Create and manage organizational departments/units.</p>
+</blockquote>
+<ul>
+<li>Add/Edit/Delete departments</li>
+<li>Assign HOD to each department</li>
+<li>View staff count per department</li>
+</ul>
+<hr />
+<h3 id="17-reports-analytics-adminreportshtml">17. Reports &amp; Analytics (<code>admin/reports.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Generate and view performance reports.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+  <th>Report Type</th>
+  <th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Individual Report</strong></td>
+  <td>Full appraisal report for a selected staff member</td>
+</tr>
+<tr>
+  <td><strong>Department Summary</strong></td>
+  <td>Aggregated scores and ratings by department</td>
+</tr>
+<tr>
+  <td><strong>Organization Overview</strong></td>
+  <td>Cross-department comparison</td>
+</tr>
+<tr>
+  <td><strong>Score Distribution</strong></td>
+  <td>Histogram of final scores</td>
+</tr>
+<tr>
+  <td><strong>Completion Status</strong></td>
+  <td>Cycle progress across the organization</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Filter by cycle, department, score range</li>
+<li>Export to PDF / Excel (Phase 2)</li>
+<li>Charts powered by Chart.js</li>
+</ul>
+<hr />
+<h3 id="18-system-settings-adminsettingshtml">18. System Settings (<code>admin/settings.html</code>)</h3>
+<blockquote>
+<p><strong>Purpose</strong>: Configure system-wide parameters.</p>
+</blockquote>
+<ul>
+<li>Scoring scale (1-5 or 1-10)</li>
+<li>Competency categories (add/remove/edit)</li>
+<li>KPI templates</li>
+<li>Notification messages</li>
+<li>Organization name and logo</li>
+</ul>
+<hr />
+<h2 id="data-flow-summary">Data Flow Summary</h2>
+<div class="diagram-shell"><div class="diagram-label">Workflow / Navigation Diagram</div><div class="mermaid">sequenceDiagram
+    participant HR as HR/Admin
+    participant S as Staff
+    participant SV as Supervisor
+    participant HOD as HOD
+
+    HR-&gt;&gt;S: Creates &amp; activates appraisal cycle
+    S-&gt;&gt;S: Fills self-appraisal form
+    S-&gt;&gt;SV: Submits self-appraisal
+    SV-&gt;&gt;S: Returns with comments (if needed)
+    S-&gt;&gt;SV: Resubmits
+    SV-&gt;&gt;HOD: Submits review + scores
+    HOD-&gt;&gt;SV: Returns with comments (if needed)
+    SV-&gt;&gt;HOD: Resubmits
+    HOD-&gt;&gt;HR: Approves final appraisal
+    HR-&gt;&gt;HR: Archives &amp; generates reports
+</div><details class="diagram-source"><summary>View diagram source</summary><pre><code>sequenceDiagram
+    participant HR as HR/Admin
+    participant S as Staff
+    participant SV as Supervisor
+    participant HOD as HOD
+
+    HR-&gt;&gt;S: Creates &amp; activates appraisal cycle
+    S-&gt;&gt;S: Fills self-appraisal form
+    S-&gt;&gt;SV: Submits self-appraisal
+    SV-&gt;&gt;S: Returns with comments (if needed)
+    S-&gt;&gt;SV: Resubmits
+    SV-&gt;&gt;HOD: Submits review + scores
+    HOD-&gt;&gt;SV: Returns with comments (if needed)
+    SV-&gt;&gt;HOD: Resubmits
+    HOD-&gt;&gt;HR: Approves final appraisal
+    HR-&gt;&gt;HR: Archives &amp; generates reports
+</code></pre></details></div>
+<hr />
+<h2 id="file-folder-structure">File &amp; Folder Structure</h2>
+<pre class="code-block"><code>appraisal_system/
+├── index.html                  ← Login page
+├── forgot-password.html
+├── css/
+│   └── styles.css              ← Custom styles (Tailwind via CDN)
+├── js/
+│   ├── app.js                  ← Shared utilities, auth, navigation
+│   ├── auth.js                 ← Login/logout/session management
+│   ├── data.js                 ← LocalStorage CRUD helpers
+│   └── charts.js               ← Chart.js configurations
+├── staff/
+│   ├── dashboard.html
+│   ├── self-appraisal.html
+│   ├── history.html
+│   └── profile.html
+├── supervisor/
+│   ├── dashboard.html
+│   ├── team.html
+│   └── review.html
+├── hod/
+│   ├── dashboard.html
+│   ├── appraisals.html
+│   └── review.html
+├── admin/
+│   ├── dashboard.html
+│   ├── cycles.html
+│   ├── staff.html
+│   ├── departments.html
+│   ├── reports.html
+│   └── settings.html
+└── components/
+    ├── sidebar.html            ← Reusable sidebar (loaded via JS)
+    ├── header.html             ← Reusable top bar
+    └── notifications.html      ← Notification dropdown
+</code></pre>
+<hr />
+<h2 id="phased-delivery-plan">Phased Delivery Plan</h2>
+<h3 id="phase-1-mvp-current-build">Phase 1 — MVP (Current Build)</h3>
+<ul>
+<li>[x] Login system with role-based routing</li>
+<li>[x] Staff self-appraisal form (submit + draft)</li>
+<li>[x] Supervisor review &amp; scoring</li>
+<li>[x] HOD approval flow</li>
+<li>[x] Admin dashboard with cycle management</li>
+<li>[x] Data stored in LocalStorage/JSON</li>
+<li>[x] Tailwind CSS + Alpine.js + Chart.js</li>
+</ul>
+<h3 id="phase-2-enhancements">Phase 2 — Enhancements</h3>
+<ul>
+<li>[ ] Backend API (Node.js/Express or PHP)</li>
+<li>[ ] Database (MySQL or PostgreSQL)</li>
+<li>[ ] Email notifications</li>
+<li>[ ] PDF report generation</li>
+<li>[ ] Bulk staff import (CSV)</li>
+<li>[ ] Audit trail / activity logs</li>
+</ul>
+<h3 id="phase-3-advanced">Phase 3 — Advanced</h3>
+<ul>
+<li>[ ] 360-degree feedback</li>
+<li>[ ] Goal tracking with mid-year reviews</li>
+<li>[ ] Mobile-responsive PWA</li>
+<li>[ ] Role-based access control (RBAC) with permissions</li>
+<li>[ ] Integration with payroll systems</li>
+</ul>
+<hr />
+<h2 id="open-questions">Open Questions</h2>
+<blockquote>
+<p><strong>Important:</strong> Please clarify the following before we begin building:</p>
+</blockquote>
+<ol>
+<li><strong>Scoring Scale</strong>: Should the appraisal use a <strong>1–5</strong> or <strong>1–10</strong> scoring scale?</li>
+<li><strong>KPI Categories</strong>: Do you have a predefined list of KPIs/competencies used by the Revenue Service, or should we create generic ones?</li>
+<li><strong>Appraisal Frequency</strong>: Is this <strong>annual</strong>, <strong>bi-annual</strong>, or <strong>quarterly</strong>?</li>
+<li><strong>Seed Data</strong>: Should I pre-populate the system with sample staff, departments, and a demo appraisal cycle for testing?</li>
+<li><strong>Tailwind Version</strong>: You mentioned Tailwind CSS — shall I use <strong>Tailwind v3 via CDN</strong> (simplest) or set up a build tool?</li>
+<li><strong>Authentication</strong>: For Phase 1, is a simple hardcoded login (demo accounts per role) acceptable, or do you need a registration flow?</li>
+</ol>
+<hr />
+<h2 id="verification-plan">Verification Plan</h2>
+<h3 id="automated-tests">Automated Tests</h3>
+<ul>
+<li>Form validation tested via browser console scripts</li>
+<li>Navigation flow verified by clicking through all links</li>
+</ul>
+<h3 id="manual-verification">Manual Verification</h3>
+<ul>
+<li>Walk through the complete appraisal lifecycle: HR creates cycle → Staff submits → Supervisor reviews → HOD approves → HR views report</li>
+<li>Test on both desktop and mobile viewports</li>
+<li>Verify all role-based access (each role only sees their pages)</li>
+</ul>
+
+      </article>
+    </main>
+    <div class="footer">Generated from the uploaded implementation plan markdown file.</div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    if (window.mermaid) {
+      mermaid.initialize({ startOnLoad: true, theme: 'base', securityLevel: 'loose', themeVariables: { primaryColor: '#eef5ff', primaryTextColor: '#14213d', primaryBorderColor: '#173b7a', lineColor: '#0f766e', secondaryColor: '#ecfdf5', tertiaryColor: '#fff7ed' } });
+    }
+  </script>
+</body>
+</html>

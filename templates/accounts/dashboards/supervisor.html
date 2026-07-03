@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% block title %}Supervisor Dashboard — SIRS Appraisal Portal{% endblock %}
+
+{% block content %}
+<div class="space-y-7 max-w-6xl mx-auto">
+
+    <!-- ══════════ WELCOME BANNER ══════════ -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-5 bg-white dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/50 rounded-2xl p-6 shadow-sm relative overflow-hidden">
+        <!-- Decorative bg -->
+        <div class="absolute -right-20 -top-20 w-64 h-64 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-teal-500/10 dark:bg-teal-500/5 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="relative">
+            <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Welcome back, <span class="bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-500">{{ user.first_name }}</span>!
+            </h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                You are viewing the supervisor panel for your direct reports.
+            </p>
+        </div>
+
+        <div class="relative shrink-0 flex items-center gap-4">
+            <div class="text-right hidden sm:block">
+                <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Active Cycle</p>
+                <p class="text-sm font-bold text-slate-800 dark:text-slate-200">
+                    {% if active_cycle %}{{ active_cycle.name }}{% else %}No Active Cycle{% endif %}
+                </p>
+            </div>
+            {% if active_cycle %}
+            <div class="w-px h-10 bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
+            <a href="{% url 'appraisals:team_list' %}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
+                               bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500
+                               text-white shadow-md shadow-emerald-500/25 transition">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+                View Review Queue
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ══════════ STATS CARDS ══════════ -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Team -->
+        <div class="bg-white dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200/70 dark:border-slate-800/50 shadow-sm flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                <svg class="h-6 w-6 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Total Team</p>
+                <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{{ total_team }}</p>
+            </div>
+        </div>
+
+        <!-- Pending Self-Appraisal -->
+        <div class="bg-white dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200/70 dark:border-slate-800/50 shadow-sm flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center shrink-0">
+                <svg class="h-6 w-6 text-amber-500 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Pending Staff</p>
+                <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{{ pending_self }}</p>
+            </div>
+        </div>
+
+        <!-- Awaiting Your Review -->
+        <div class="bg-white dark:bg-slate-900/60 p-5 rounded-2xl border border-blue-200/70 dark:border-blue-900/40 shadow-sm flex items-start gap-4 ring-1 ring-blue-500/10">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-blue-600/70 dark:text-blue-400/80 uppercase tracking-wide">To Review</p>
+                <p class="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-0.5">{{ awaiting_review }}</p>
+            </div>
+        </div>
+
+        <!-- Reviewed by You -->
+        <div class="bg-white dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200/70 dark:border-slate-800/50 shadow-sm flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center shrink-0">
+                <svg class="h-6 w-6 text-emerald-500 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Reviewed</p>
+                <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{{ reviewed }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════ PENDING SUBMISSIONS TABLE ══════════ -->
+    <div class="bg-white dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-sm">
+        <div class="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">Review Queue (Needs Action)</h2>
+        </div>
+        
+        <div class="overflow-x-auto">
+            {% if recent_submissions %}
+            <table class="w-full text-sm text-left">
+                <thead class="bg-slate-50/50 dark:bg-slate-800/30 text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">
+                    <tr>
+                        <th class="px-6 py-4">Staff Member</th>
+                        <th class="px-6 py-4">Department</th>
+                        <th class="px-6 py-4">Submitted On</th>
+                        <th class="px-6 py-4 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {% for appraisal in recent_submissions %}
+                    <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/20 transition">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300">
+                                    {{ appraisal.staff.first_name|slice:":1" }}{{ appraisal.staff.last_name|slice:":1" }}
+                                </div>
+                                <div>
+                                    <p class="font-bold text-slate-800 dark:text-slate-200">{{ appraisal.staff.get_full_name }}</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-500">{{ appraisal.staff.staff_id }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 font-medium text-slate-600 dark:text-slate-400">
+                            {{ appraisal.staff.department.name|default:"—" }}
+                        </td>
+                        <td class="px-6 py-4 text-slate-500 dark:text-slate-400">
+                            {{ appraisal.self_submitted_at|date:"M d, Y" }}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <a href="{% url 'appraisals:supervisor_review' appraisal.id %}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition shadow-sm">
+                                Review Now
+                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="px-6 py-12 text-center">
+                <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                    <svg class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Your queue is empty</p>
+                <p class="text-xs text-slate-500 dark:text-slate-500 mt-1">No appraisals are currently awaiting your review.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

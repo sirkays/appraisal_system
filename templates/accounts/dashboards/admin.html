@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}HR Admin Dashboard - State Internal Revenue Service{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Welcome Header -->
+    <div class="bg-gradient-to-r from-slate-900 to-slate-950 text-white rounded-2xl p-6 sm:p-8 shadow-lg flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">HR Control Panel: Welcome, {{ user.first_name }}</h1>
+            <p class="text-slate-300 text-sm mt-1 sm:mt-2">Role: <strong class="text-white">HR Administrator</strong> | Code: <strong class="text-white">{{ user.staff_id }}</strong></p>
+        </div>
+        <div class="flex items-center space-x-3 bg-white/10 backdrop-blur px-4 py-2.5 rounded-xl border border-white/10">
+            <span class="text-sm font-semibold tracking-wide">System Admin Workspace</span>
+        </div>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total IRS Staff</p>
+            <p class="text-3xl font-black text-slate-800 mt-2">4</p>
+            <div class="mt-4 flex items-center text-xs text-slate-500 font-medium">
+                <span>Active employees</span>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Cycles</p>
+            <p class="text-3xl font-black text-amber-600 mt-2">0</p>
+            <div class="mt-4 flex items-center text-xs text-slate-500 font-medium">
+                <span>No active appraisal cycles</span>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Completion Rate</p>
+            <p class="text-3xl font-black text-slate-800 mt-2">0%</p>
+            <div class="mt-4 flex items-center text-xs text-slate-500 font-medium">
+                <span>No cycle in progress</span>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Departments</p>
+            <p class="text-3xl font-black text-emerald-800 mt-2">3</p>
+            <div class="mt-4 flex items-center text-xs text-slate-500 font-medium">
+                <span>Organisational units configured</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+        <h3 class="text-lg font-bold text-slate-800 mb-4">HR Quick Actions</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <a href="#" class="flex flex-col items-center justify-center p-4 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-100 rounded-xl text-center transition group">
+                <span class="font-bold text-emerald-800 text-sm group-hover:underline">Create Appraisal Cycle</span>
+                <span class="text-xs text-emerald-600 mt-1">Define deadlines & categories</span>
+            </a>
+            <a href="/admin/" class="flex flex-col items-center justify-center p-4 bg-indigo-50 hover:bg-indigo-100/70 border border-indigo-100 rounded-xl text-center transition group">
+                <span class="font-bold text-indigo-800 text-sm group-hover:underline">Django Admin Panel</span>
+                <span class="text-xs text-indigo-600 mt-1">Manage users & database records</span>
+            </a>
+            <a href="#" class="flex flex-col items-center justify-center p-4 bg-sky-50 hover:bg-sky-100/70 border border-sky-100 rounded-xl text-center transition group">
+                <span class="font-bold text-sky-800 text-sm group-hover:underline">Manage Departments</span>
+                <span class="text-xs text-sky-600 mt-1">Configure units & HODs</span>
+            </a>
+            <a href="#" class="flex flex-col items-center justify-center p-4 bg-slate-50 hover:bg-slate-100/70 border border-slate-100 rounded-xl text-center transition group">
+                <span class="font-bold text-slate-800 text-sm group-hover:underline">System Settings</span>
+                <span class="text-xs text-slate-600 mt-1">Scale thresholds & constants</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

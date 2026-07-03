@@ -1,0 +1,31 @@
+# Django
+*.pyc
+__pycache__/
+db.sqlite3
+db.sqlite3-journal
+
+# Media uploads
+media/
+
+# Static files collected
+staticfiles/
+
+# Environment
+.env
+*.env
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (for future Tailwind build pipeline)
+node_modules/
+package-lock.json

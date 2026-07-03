@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full"
+      x-data="{
+          darkMode: localStorage.getItem('theme') === 'dark',
+          sidebarOpen: false,
+          toggleTheme() {
+              this.darkMode = !this.darkMode;
+              localStorage.setItem('theme', this.darkMode ? 'dark' : 'light');
+          }
+      }"
+      :class="{ 'dark': darkMode }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SIRS — Staff Appraisal Portal{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- Alpine.js CDN -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style type="text/tailwindcss">
+        @variant dark (&:where(.dark, .dark *));
+        body { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0.85rem;
+            border-radius: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #64748b;
+            transition: all 150ms ease;
+            position: relative;
+        }
+        .nav-link:hover {
+            background-color: #f1f5f9;
+            color: #0f172a;
+        }
+        .dark .nav-link { color: #94a3b8; }
+        .dark .nav-link:hover { background-color: rgba(30,41,59,0.6); color: #f8fafc; }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #059669, #0d9488);
+            color: #fff !important;
+            font-weight: 600;
+            box-shadow: 0 4px 14px rgba(5,150,105,0.25);
+        }
+        .dark .nav-link.active {
+            background: linear-gradient(135deg, #065f46, #0f766e);
+            box-shadow: 0 4px 14px rgba(5,150,105,0.15);
+        }
+
+        .sidebar-section-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #94a3b8;
+            padding: 0 0.85rem;
+            margin-bottom: 0.35rem;
+            margin-top: 0.5rem;
+        }
+        .dark .sidebar-section-label { color: #475569; }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full flex flex-col bg-slate-50 dark:bg-[#0b0f1a] text-slate-900 dark:text-slate-100 transition-colors duration-200 overflow-hidden">
+
+<!-- ══════════════════════════ TOP HEADER ══════════════════════════ -->
+<header class="shrink-0 h-16 z-40 flex items-center
+               bg-white/80 dark:bg-[#0d1117]/80
+               backdrop-blur-xl
+               border-b border-slate-200/70 dark:border-slate-800/60
+               shadow-sm dark:shadow-slate-950/50">
+    <div class="w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+
+        <!-- Left: Hamburger + Brand -->
+        <div class="flex items-center gap-4">
+            <!-- Mobile Hamburger -->
+            <button @click="sidebarOpen = !sidebarOpen"
+                    class="lg:hidden p-2 rounded-xl text-slate-500 dark:text-slate-400
+                           hover:bg-slate-100 dark:hover:bg-slate-800/60
+                           transition focus:outline-none">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+
+            <!-- Brand -->
+            <div class="flex items-center gap-3">
+                <div class="flex items-center justify-center w-9 h-9 rounded-xl
+                            bg-gradient-to-br from-emerald-500 to-teal-500
+                            shadow-md shadow-emerald-500/25 shrink-0">
+                    <span class="text-white font-black text-xs tracking-wider">SIRS</span>
+                </div>
+                <div class="hidden sm:block">
+                    <p class="font-bold text-sm text-slate-800 dark:text-slate-100 leading-none">Appraisal System</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">State Internal Revenue</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Actions -->
+        {% if user.is_authenticated %}
+        <div class="flex items-center gap-2">
+
+            <!-- Notification Bell -->
+            <div class="relative" x-data="{ notifOpen: false }">
+                <button @click="notifOpen = !notifOpen"
+                        class="relative p-2.5 rounded-xl text-slate-500 dark:text-slate-400
+                               hover:bg-slate-100 dark:hover:bg-slate-800/60
+                               transition cursor-pointer focus:outline-none"
+                        title="Notifications">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    <!-- Unread badge -->
+                    {% if unread_notifications_count > 0 %}
+                    <span class="absolute top-1.5 right-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-rose-500 ring-2 ring-white dark:ring-[#0d1117]"></span>
+                    {% endif %}
+                </button>
+
+                <!-- Dropdown -->
+                <div x-show="notifOpen" @click.away="notifOpen = false"
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 translate-y-1 scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-1 scale-95"
+                     class="absolute right-0 top-full mt-2 w-80
+                            bg-white dark:bg-slate-900
+                            rounded-2xl shadow-xl shadow-slate-200/60 dark:shadow-slate-950/80
+                            border border-slate-100 dark:border-slate-800
+                            z-50"
+                     style="display:none;">
+                    <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Notifications</h3>
+                        {% if unread_notifications_count > 0 %}
+                        <span class="text-xs font-semibold bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded-full">
+                            {{ unread_notifications_count }} new
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="max-h-80 overflow-y-auto">
+                        {% if unread_notifications %}
+                            {% for notif in unread_notifications %}
+                            <a href="{% url 'notifications:mark_as_read' notif.pk %}" 
+                               class="block px-4 py-3 border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition last:border-0">
+                                <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ notif.title }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{{ notif.message }}</p>
+                                <p class="text-[10px] font-medium text-slate-400 mt-2">{{ notif.created_at|timesince }} ago</p>
+                            </a>
+                            {% endfor %}
+                        {% else %}
+                            <div class="px-4 py-6 text-center">
+                                <p class="text-sm text-slate-500 dark:text-slate-400">No new notifications</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 rounded-b-2xl">
+                        <a href="{% url 'notifications:list' %}" class="block text-center text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 py-2">
+                            View All Notifications
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme Toggle -->
+            <button @click="toggleTheme()"
+                    class="p-2.5 rounded-xl text-slate-500 dark:text-slate-400
+                           hover:bg-slate-100 dark:hover:bg-slate-800/60
+                           transition cursor-pointer focus:outline-none"
+                    title="Toggle theme">
+                <!-- Sun -->
+                <svg x-show="darkMode" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+                </svg>
+                <!-- Moon -->
+                <svg x-show="!darkMode" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                </svg>
+            </button>
+
+            <!-- Divider -->
+            <div class="w-px h-6 bg-slate-200 dark:bg-slate-700/60 mx-1"></div>
+
+            <!-- User Menu -->
+            <div class="relative" x-data="{ open: false }">
+                <button @click="open = !open"
+                        class="flex items-center gap-2.5 pl-1 pr-3 py-1 rounded-xl
+                               hover:bg-slate-100 dark:hover:bg-slate-800/60
+                               transition focus:outline-none border border-transparent
+                               hover:border-slate-200 dark:hover:border-slate-700/60">
+                    <!-- Avatar -->
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600
+                                flex items-center justify-center font-bold text-white text-xs shadow-sm shrink-0">
+                        {{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}
+                    </div>
+                    <div class="hidden md:block text-left">
+                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-none">{{ user.full_name }}</p>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{{ user.get_role_display }}</p>
+                    </div>
+                    <svg class="h-4 w-4 text-slate-400 dark:text-slate-500 hidden md:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+
+                <!-- Dropdown -->
+                <div x-show="open" @click.away="open = false"
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 translate-y-1 scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-1 scale-95"
+                     class="absolute right-0 top-full mt-2 w-56
+                            bg-white dark:bg-slate-900
+                            rounded-2xl shadow-xl shadow-slate-200/60 dark:shadow-slate-950/80
+                            border border-slate-100 dark:border-slate-800
+                            py-1.5 z-50"
+                     style="display:none;">
+                    <!-- User Info -->
+                    <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600
+                                        flex items-center justify-center font-bold text-white text-sm shrink-0">
+                                {{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{{ user.full_name }}</p>
+                                <p class="text-xs text-slate-400 dark:text-slate-500 truncate">{{ user.email }}</p>
+                            </div>
+                        </div>
+                        <span class="mt-2 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold
+                                     bg-emerald-50 dark:bg-emerald-950/40
+                                     text-emerald-700 dark:text-emerald-400">
+                            {{ user.get_role_display }}
+                        </span>
+                    </div>
+                    <div class="py-1">
+                        <a href="#" class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300
+                                           hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">
+                            <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            My Profile
+                        </a>
+                        <a href="#" class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300
+                                           hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">
+                            <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            Settings
+                        </a>
+                    </div>
+                    <div class="border-t border-slate-100 dark:border-slate-800 pt-1">
+                        <a href="{% url 'accounts:logout' %}"
+                           class="flex items-center gap-3 px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400
+                                  hover:bg-rose-50 dark:hover:bg-rose-950/20 transition">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
+                            Sign Out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</header>
+
+<!-- ══════════════════════════ BODY LAYOUT ══════════════════════════ -->
+<div class="flex-1 flex overflow-hidden">
+
+    <!-- ══════════ SIDEBAR ══════════ -->
+    {% if user.is_authenticated %}
+    <!-- Mobile backdrop overlay -->
+    <div x-show="sidebarOpen" @click="sidebarOpen = false"
+         class="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-30 lg:hidden"
+         style="display:none;"></div>
+
+    <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+           class="fixed inset-y-0 left-0 z-40
+                  w-64 shrink-0
+                  lg:relative lg:translate-x-0 lg:inset-auto
+                  flex flex-col
+                  bg-white dark:bg-[#0d1117]
+                  border-r border-slate-200/80 dark:border-slate-800/50
+                  transition-transform duration-300 ease-in-out
+                  shadow-xl shadow-slate-200/50 dark:shadow-slate-950/80 lg:shadow-none">
+
+        <!-- Sidebar Top Brand (Mobile) -->
+        <div class="h-16 shrink-0 flex items-center justify-between px-5 lg:hidden
+                    border-b border-slate-200/80 dark:border-slate-800/50">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500
+                            flex items-center justify-center shadow-sm shrink-0">
+                    <span class="text-white font-black text-xs">SI</span>
+                </div>
+                <span class="font-bold text-sm text-slate-800 dark:text-slate-100">Appraisal Portal</span>
+            </div>
+            <button @click="sidebarOpen = false"
+                    class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200
+                           hover:bg-slate-100 dark:hover:bg-slate-800/60 transition">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- User Quick Info Panel (Sidebar Top) -->
+        <div class="px-4 py-4 border-b border-slate-100 dark:border-slate-800/50">
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600
+                            flex items-center justify-center font-bold text-white shrink-0 shadow-sm">
+                    {{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{{ user.full_name }}</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{{ user.staff_id }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+
+            <!-- ── HR Admin ── -->
+            {% if user.role == 'HR_ADMIN' %}
+            <p class="sidebar-section-label">HR Administration</p>
+            <a href="{% url 'hr_admin:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'hr_admin' %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                Dashboard
+            </a>
+            <a href="{% url 'hr_admin:cycle_list' %}" class="nav-link {% if 'cycle' in request.resolver_match.url_name %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                Appraisal Cycles
+            </a>
+            <a href="{% url 'hr_admin:staff_list' %}" class="nav-link {% if 'staff' in request.resolver_match.url_name %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                Staff Directory
+            </a>
+            <a href="{% url 'hr_admin:department_list' %}" class="nav-link {% if 'department' in request.resolver_match.url_name %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+                Departments
+            </a>
+            <a href="{% url 'hr_admin:reports' %}" class="nav-link {% if 'reports' in request.resolver_match.url_name %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                Reports & Analytics
+            </a>
+            {% endif %}
+
+            <!-- ── HOD ── -->
+            {% if user.role == 'HOD' %}
+            <p class="sidebar-section-label">Department</p>
+            <a href="{% url 'accounts:hod_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'hod_dashboard' %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                Overview
+            </a>
+            <a href="{% url 'appraisals:department_appraisals' %}" class="nav-link {% if request.resolver_match.url_name == 'department_appraisals' or request.resolver_match.url_name == 'hod_review' %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Department Appraisals
+            </a>
+            <a href="#" class="nav-link">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                Department Reports
+            </a>
+            {% endif %}
+
+            <!-- ── Supervisor ── -->
+            {% if user.role == 'SUPERVISOR' %}
+            <p class="sidebar-section-label">Supervisor Panel</p>
+            <a href="{% url 'accounts:supervisor_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'supervisor_dashboard' %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                </svg>
+                Dashboard
+            </a>
+            <a href="{% url 'appraisals:team_list' %}" class="nav-link {% if request.resolver_match.url_name == 'team_list' %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                </svg>
+                Team Appraisals
+            </a>
+            {% endif %}
+
+            <!-- ── Common (all roles) ── -->
+            <p class="sidebar-section-label mt-3">My Workspace</p>
+            <a href="{% url 'accounts:staff_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_dashboard' %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                </svg>
+                My Dashboard
+            </a>
+            <a href="{% url 'appraisals:my_appraisals' %}" class="nav-link {% if request.resolver_match.url_name == 'my_appraisals' or request.resolver_match.url_name == 'self_appraisal_form' %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                My Appraisals
+            </a>
+            <a href="{% url 'notifications:list' %}" class="nav-link {% if request.resolver_match.url_name == 'list' and request.resolver_match.app_name == 'notifications' %}active{% endif %}">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                Notifications
+                {% if unread_notifications_count > 0 %}
+                <span class="ml-auto w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+                {% endif %}
+            </a>
+        </nav>
+
+        <!-- Sidebar Bottom -->
+        <div class="shrink-0 px-3 py-3 border-t border-slate-100 dark:border-slate-800/50">
+            <a href="{% url 'accounts:logout' %}"
+               class="nav-link text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-600 dark:hover:text-rose-300">
+                <svg class="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                Sign Out
+            </a>
+        </div>
+    </aside>
+    {% endif %}
+
+    <!-- ══════════════════════════ MAIN CONTENT ══════════════════════════ -->
+    <main class="flex-1 overflow-y-auto">
+        <div class="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 py-7 sm:py-9">
+
+            <!-- Django Messages -->
+            {% if messages %}
+            <div class="mb-6 space-y-2">
+                {% for message in messages %}
+                <div class="flex items-center justify-between gap-4 px-4 py-3.5 rounded-xl text-sm font-medium border
+                            {% if message.tags == 'success' %}bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40
+                            {% elif message.tags == 'error' %}bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/40
+                            {% else %}bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800/40{% endif %}"
+                     x-data="{ show: true }" x-show="show" x-transition>
+                    <span>{{ message }}</span>
+                    <button @click="show = false" class="shrink-0 opacity-60 hover:opacity-100 transition">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+</div>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

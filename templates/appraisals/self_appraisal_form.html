@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+{% block title %}Self-Appraisal Form — SIRS Staff Appraisal Portal{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ activeTab: 'narrative' }">
+
+    <!-- ══════════ FORM HEADER ══════════ -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                Self-Assessment Evaluation
+            </h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Cycle: <span class="font-bold text-slate-700 dark:text-slate-350">{{ cycle.name }}</span> &nbsp;·&nbsp; Scale: <span class="font-bold text-slate-700 dark:text-slate-350">1-{{ cycle.scoring_scale }}</span>
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'accounts:dashboard_redirect' %}" 
+               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
+                      bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300
+                      border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- ══════════ ALERT BANNER (If not editable) ══════════ -->
+    {% if not is_editable %}
+    <div class="p-4 rounded-xl border border-blue-200/50 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 flex items-start gap-3">
+        <svg class="h-5 w-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <div class="text-sm">
+            <p class="font-bold">Read-Only Mode</p>
+            <p class="mt-0.5">This appraisal is currently <strong class="uppercase text-blue-800 dark:text-blue-300">{{ appraisal.status }}</strong> and cannot be edited. You are viewing your saved assessment details.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ══════════ NAVIGATION TABS ══════════ -->
+    <div class="flex border-b border-slate-200 dark:border-slate-800 gap-1 overflow-x-auto shrink-0 scrollbar-none">
+        <button @click="activeTab = 'narrative'" 
+                :class="activeTab === 'narrative' ? 'border-emerald-600 dark:border-emerald-450 text-emerald-600 dark:text-emerald-400 font-semibold' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'"
+                class="px-5 py-3 border-b-2 text-sm transition-all focus:outline-none shrink-0">
+            1. Narrative Details
+        </button>
+        <button @click="activeTab = 'kpis'" 
+                :class="activeTab === 'kpis' ? 'border-emerald-600 dark:border-emerald-450 text-emerald-600 dark:text-emerald-400 font-semibold' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'"
+                class="px-5 py-3 border-b-2 text-sm transition-all focus:outline-none shrink-0">
+            2. Performance KPIs
+        </button>
+        <button @click="activeTab = 'competencies'" 
+                :class="activeTab === 'competencies' ? 'border-emerald-600 dark:border-emerald-450 text-emerald-600 dark:text-emerald-400 font-semibold' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'"
+                class="px-5 py-3 border-b-2 text-sm transition-all focus:outline-none shrink-0">
+            3. Core Competencies
+        </button>
+    </div>
+
+    <!-- ══════════ RETURN REASON ALERT ══════════ -->
+    {% if appraisal.status == 'RETURNED_TO_STAFF' and appraisal.supervisor_return_notes %}
+    <div class="bg-rose-50 dark:bg-rose-900/20 border-l-4 border-rose-500 p-4 rounded-r-xl shadow-sm">
+        <div class="flex items-start gap-3">
+            <svg class="h-6 w-6 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <div>
+                <h3 class="font-bold text-rose-800 dark:text-rose-300">Returned for Revision</h3>
+                <p class="text-sm text-rose-700 dark:text-rose-400 mt-1">Your supervisor has returned this appraisal. Please address the following comment before resubmitting:</p>
+                <div class="mt-3 p-3 bg-white/60 dark:bg-slate-900/50 rounded-lg text-sm text-slate-800 dark:text-slate-200 border border-rose-100 dark:border-rose-800/50 italic">
+                    "{{ appraisal.supervisor_return_notes }}"
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ══════════ FORM CONTAINER ══════════ -->
+    <form method="POST" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- ══════════ TAB 1: NARRATIVE DETAILS ══════════ -->
+        <div x-show="activeTab === 'narrative'" class="space-y-6">
+            <div class="bg-white dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/50 rounded-2xl p-6 sm:p-7 space-y-6">
+                {% for resp in narrative_responses %}
+                <div class="space-y-3 pb-6 {% if not forloop.last %}border-b border-slate-100 dark:border-slate-800/60{% endif %}">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300">
+                            {{ resp.field.name }} <span class="text-rose-500">*</span>
+                        </label>
+                        {% if resp.field.description %}
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">{{ resp.field.description }}</p>
+                        {% endif %}
+                    </div>
+                    <textarea name="narrative_{{ resp.id }}" rows="4" {% if not is_editable %}disabled{% endif %}
+                              placeholder="Enter your response..."
+                              class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-4 py-3 text-sm text-slate-850 dark:text-slate-205 placeholder-slate-405 dark:placeholder-slate-500 focus:border-emerald-500 focus:outline-none transition">{{ resp.response_text }}</textarea>
+                    
+                    <div class="space-y-1.5 pt-1">
+                        <span class="block text-xs font-semibold text-slate-400 dark:text-slate-500">Supporting Evidence (Optional)</span>
+                        {% if resp.evidence_file %}
+                        <div class="mb-2">
+                            <a href="{{ resp.evidence_file.url }}" target="_blank" class="inline-flex items-center gap-2 text-xs text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/40">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                View Attached File
+                            </a>
+                        </div>
+                        {% endif %}
+                        {% if is_editable %}
+                        <input type="file" name="narrative_evidence_{{ resp.id }}" class="block w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-900/20 dark:file:text-emerald-400 dark:hover:file:bg-emerald-900/40 transition">
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-6 text-sm text-slate-500 italic">
+                    No narrative fields defined for this cycle.
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="flex justify-end gap-3">
+                <button type="button" @click="activeTab = 'kpis'" 
+                        class="px-5 py-3 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-500/25 transition cursor-pointer">
+                    Next: KPIs
+                </button>
+            </div>
+        </div>
+
+        <!-- ══════════ TAB 2: KPIs ══════════ -->
+        <div x-show="activeTab === 'kpis'" class="space-y-6">
+            {% for group in kpi_scores_by_cat %}
+            <div class="bg-white dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/50 rounded-2xl p-6 sm:p-7 space-y-5">
+                <div class="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-900 dark:text-white">{{ group.category.name }}</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ group.category.description }}</p>
+                    </div>
+                    <span class="text-xs font-bold px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg whitespace-nowrap">
+                        Weight: {{ group.category.weight }}%
+                    </span>
+                </div>
+
+                <div class="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {% for score in group.scores %}
+                    <div class="py-5 first:pt-0 last:pb-0 space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                            <div class="space-y-1">
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ score.kpi_item.name }}</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{{ score.kpi_item.description }}</p>
+                            </div>
+
+                            <!-- Scoring Options (Horizontal radio sequence) -->
+                            <div class="shrink-0">
+                                <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Self-Score <span class="text-rose-500">*</span></label>
+                                <div class="flex items-center gap-1.5">
+                                    {% for val in scale_range %}
+                                    <label class="relative cursor-pointer select-none">
+                                        <input type="radio" name="kpi_score_{{ score.id }}" value="{{ val }}" 
+                                               {% if score.self_score == val %}checked{% endif %}
+                                               {% if not is_editable %}disabled{% endif %}
+                                               class="peer sr-only">
+                                        <span class="flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-800
+                                                     bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 font-bold text-sm
+                                                     peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600
+                                                     peer-disabled:opacity-50 peer-disabled:cursor-not-allowed
+                                                     hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                                            {{ val }}
+                                        </span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Staff Comment on KPI -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400">Staff Commentary / Evidence of Achievement</label>
+                            <input type="text" name="kpi_comment_{{ score.id }}" value="{{ score.staff_comment }}" {% if not is_editable %}disabled{% endif %}
+                                   placeholder="Describe briefly your key results or achievements that justify this score..."
+                                   class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-4 py-2.5 text-sm text-slate-850 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-550 focus:border-emerald-500 focus:outline-none transition mb-2">
+                            
+                            <div class="flex items-center gap-3">
+                                {% if score.evidence_file %}
+                                <a href="{{ score.evidence_file.url }}" target="_blank" class="shrink-0 inline-flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800/40">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                    View Evidence
+                                </a>
+                                {% endif %}
+                                {% if is_editable %}
+                                <input type="file" name="kpi_evidence_{{ score.id }}" class="block w-full text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-300 transition">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Navigation Buttons -->
+            <div class="flex justify-between gap-3 pt-4">
+                <button type="button" @click="activeTab = 'narrative'" 
+                        class="px-5 py-3 rounded-xl text-sm font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer">
+                    Back: Narrative
+                </button>
+                <button type="button" @click="activeTab = 'competencies'" 
+                        class="px-5 py-3 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-500/25 transition cursor-pointer">
+                    Next: Competencies
+                </button>
+            </div>
+        </div>
+
+        <!-- ══════════ TAB 3: COMPETENCIES ══════════ -->
+        <div x-show="activeTab === 'competencies'" class="space-y-6">
+            {% for group in comp_scores_by_cat %}
+            <div class="bg-white dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/50 rounded-2xl p-6 sm:p-7 space-y-5">
+                <div class="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-900 dark:text-white">{{ group.category.name }}</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ group.category.description }}</p>
+                    </div>
+                    <span class="text-xs font-bold px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg whitespace-nowrap">
+                        Weight: {{ group.category.weight }}%
+                    </span>
+                </div>
+
+                <div class="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {% for score in group.scores %}
+                    <div class="py-5 first:pt-0 last:pb-0 space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                            <div class="space-y-1">
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ score.competency_item.name }}</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{{ score.competency_item.description }}</p>
+                            </div>
+
+                            <!-- Scoring Options (Horizontal radio sequence) -->
+                            <div class="shrink-0">
+                                <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Self-Score <span class="text-rose-500">*</span></label>
+                                <div class="flex items-center gap-1.5">
+                                    {% for val in scale_range %}
+                                    <label class="relative cursor-pointer select-none">
+                                        <input type="radio" name="competency_score_{{ score.id }}" value="{{ val }}" 
+                                               {% if score.self_score == val %}checked{% endif %}
+                                               {% if not is_editable %}disabled{% endif %}
+                                               class="peer sr-only">
+                                        <span class="flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-800
+                                                     bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 font-bold text-sm
+                                                     peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600
+                                                     peer-disabled:opacity-50 peer-disabled:cursor-not-allowed
+                                                     hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                                            {{ val }}
+                                        </span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Staff Comment on Competency -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400">Comments / Behavior Demonstration Summary</label>
+                            <input type="text" name="competency_comment_{{ score.id }}" value="{{ score.staff_comment }}" {% if not is_editable %}disabled{% endif %}
+                                   placeholder="Describe instances where you demonstrated this competency indicator during this period..."
+                                   class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-4 py-2.5 text-sm text-slate-855 dark:text-slate-205 placeholder-slate-405 dark:placeholder-slate-550 focus:border-emerald-500 focus:outline-none transition mb-2">
+                                   
+                            <div class="flex items-center gap-3">
+                                {% if score.evidence_file %}
+                                <a href="{{ score.evidence_file.url }}" target="_blank" class="shrink-0 inline-flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800/40">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                    View Evidence
+                                </a>
+                                {% endif %}
+                                {% if is_editable %}
+                                <input type="file" name="comp_evidence_{{ score.id }}" class="block w-full text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-300 transition">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Save / Submit Footer Actions -->
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-slate-200 dark:border-slate-800/80">
+                <button type="button" @click="activeTab = 'kpis'" 
+                        class="w-full sm:w-auto px-5 py-3 rounded-xl text-sm font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer">
+                    Back: KPIs
+                </button>
+                
+                {% if is_editable %}
+                <div class="flex w-full sm:w-auto items-center gap-3">
+                    <button type="submit" name="action" value="save_draft"
+                            class="flex-1 sm:flex-none px-5 py-3 rounded-xl text-sm font-bold
+                                   bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300
+                                   border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer text-center">
+                        Save as Draft
+                    </button>
+                    <button type="submit" name="action" value="submit"
+                            class="flex-1 sm:flex-none px-6 py-3 rounded-xl text-sm font-bold
+                                   bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500
+                                   text-white shadow-md shadow-emerald-500/25 transition cursor-pointer text-center">
+                        Submit Assessment
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </form>
+</div>
+{% endblock %}
