@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}CBT Exams — SIRS{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Page Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100">My CBT Exams</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Computer-based tests assigned to you</p>
+        </div>
+        <a href="{% url 'cbt:my_results' %}"
+           class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+                  bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300
+                  hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            My Results
+        </a>
+    </div>
+
+    {% if exam_data %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {% for item in exam_data %}
+        {% with exam=item.exam attempt=item.attempt %}
+        <div class="group relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800
+                    shadow-sm hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-950/50
+                    transition-all duration-300 overflow-hidden flex flex-col">
+
+            <!-- Top colour bar -->
+            <div class="h-1.5 w-full
+                {% if attempt and attempt.status == 'SUBMITTED' %}
+                    {% if attempt.passed %}bg-gradient-to-r from-emerald-400 to-teal-400
+                    {% else %}bg-gradient-to-r from-rose-400 to-pink-400{% endif %}
+                {% elif attempt and attempt.status == 'IN_PROGRESS' %}
+                    bg-gradient-to-r from-amber-400 to-orange-400
+                {% elif attempt and attempt.status == 'TIMED_OUT' %}
+                    bg-gradient-to-r from-rose-400 to-pink-400
+                {% else %}
+                    bg-gradient-to-r from-emerald-400 to-teal-400
+                {% endif %}">
+            </div>
+
+            <div class="p-6 flex flex-col flex-1">
+
+                <!-- Status Badge -->
+                <div class="flex items-start justify-between gap-3 mb-4">
+                    <div class="flex-1 min-w-0">
+                        <h2 class="text-base font-bold text-slate-800 dark:text-slate-100 leading-snug">{{ exam.title }}</h2>
+                    </div>
+                    {% if attempt %}
+                        {% if attempt.status == 'SUBMITTED' %}
+                            {% if attempt.passed %}
+                            <span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">Passed</span>
+                            {% else %}
+                            <span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400">Failed</span>
+                            {% endif %}
+                        {% elif attempt.status == 'IN_PROGRESS' %}
+                            <span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">In Progress</span>
+                        {% elif attempt.status == 'TIMED_OUT' %}
+                            <span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400">Timed Out</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">Not Started</span>
+                    {% endif %}
+                </div>
+
+                <!-- Meta info -->
+                <div class="flex flex-wrap gap-3 mb-4">
+                    <div class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        {{ exam.duration_minutes }} min
+                    </div>
+                    <div class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        {{ exam.question_count }} questions
+                    </div>
+                    <div class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Pass: {{ exam.pass_mark }}%
+                    </div>
+                </div>
+
+                {% if item.deadline %}
+                <div class="mb-4 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 rounded-lg">
+                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    Due: {{ item.deadline|date:"d M Y, H:i" }}
+                </div>
+                {% endif %}
+
+                <!-- Score (if attempted) -->
+                {% if attempt and attempt.status in 'SUBMITTED TIMED_OUT' %}
+                <div class="mb-5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center gap-4">
+                    <div class="text-center">
+                        <p class="text-2xl font-black {% if attempt.passed %}text-emerald-600 dark:text-emerald-400{% else %}text-rose-600 dark:text-rose-400{% endif %}">{{ attempt.percentage|floatformat:0 }}%</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Score</p>
+                    </div>
+                    <div class="h-10 w-px bg-slate-200 dark:bg-slate-700"></div>
+                    <div class="text-center">
+                        <p class="text-lg font-bold text-slate-700 dark:text-slate-300">{{ attempt.raw_score }}/{{ attempt.total_marks }}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Marks</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="mt-auto">
+                    {% if attempt and attempt.status in 'SUBMITTED TIMED_OUT' %}
+                        <a href="{% url 'cbt:exam_result' attempt.pk %}"
+                           class="block w-full text-center py-2.5 rounded-xl text-sm font-semibold
+                                  bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300
+                                  hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                            View Results
+                        </a>
+                        {% if exam.allow_multiple_attempts %}
+                        <a href="{% url 'cbt:exam_detail' exam.pk %}"
+                           class="block w-full text-center py-2.5 mt-2 rounded-xl text-sm font-semibold
+                                  bg-gradient-to-r from-emerald-500 to-teal-500 text-white
+                                  hover:from-emerald-600 hover:to-teal-600 shadow-sm transition">
+                            Retake Exam
+                        </a>
+                        {% endif %}
+                    {% elif attempt and attempt.status == 'IN_PROGRESS' %}
+                        <a href="{% url 'cbt:take_exam' attempt.pk %}"
+                           class="block w-full text-center py-2.5 rounded-xl text-sm font-semibold
+                                  bg-gradient-to-r from-amber-500 to-orange-500 text-white
+                                  hover:from-amber-600 hover:to-orange-600 shadow-sm transition">
+                            Resume Exam
+                        </a>
+                    {% elif item.can_start %}
+                        <a href="{% url 'cbt:exam_detail' exam.pk %}"
+                           class="block w-full text-center py-2.5 rounded-xl text-sm font-semibold
+                                  bg-gradient-to-r from-emerald-500 to-teal-500 text-white
+                                  hover:from-emerald-600 hover:to-teal-600 shadow-sm transition">
+                            Start Exam
+                        </a>
+                    {% else %}
+                        <button disabled
+                                class="block w-full text-center py-2.5 rounded-xl text-sm font-semibold
+                                       bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed">
+                            Completed
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="flex flex-col items-center justify-center py-20 text-center">
+        <div class="w-20 h-20 rounded-2xl bg-emerald-100 dark:bg-emerald-950/30 flex items-center justify-center mb-5">
+            <svg class="h-10 w-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-bold text-slate-700 dark:text-slate-300 mb-2">No exams assigned</h3>
+        <p class="text-sm text-slate-500 dark:text-slate-400 max-w-sm">You have no active CBT exams assigned to you at the moment. Check back later.</p>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

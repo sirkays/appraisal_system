@@ -16,6 +16,7 @@ urlpatterns = [
     path('appraisals/', include('appraisals.urls')),
     path('notifications/', include('notifications.urls')),
     path('hr/', include('hr_admin.urls')),
+    path('cbt/', include('cbt.urls')),
 ]
 
 # Serve media files during development

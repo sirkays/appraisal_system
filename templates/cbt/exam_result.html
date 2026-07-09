@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Exam Result — {{ attempt.exam.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+        <a href="{% url 'cbt:exam_list' %}" class="hover:text-slate-700 dark:hover:text-slate-200 transition">CBT Exams</a>
+        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        <span class="text-slate-700 dark:text-slate-200 font-medium">Result</span>
+    </nav>
+
+    <!-- Result Hero Card -->
+    <div class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+        <!-- BG Gradient -->
+        <div class="absolute inset-0 opacity-5 dark:opacity-10
+            {% if attempt.passed %}bg-gradient-to-br from-emerald-400 to-teal-400
+            {% else %}bg-gradient-to-br from-rose-400 to-pink-400{% endif %}">
+        </div>
+
+        <!-- Top Bar -->
+        <div class="h-2 {% if attempt.passed %}bg-gradient-to-r from-emerald-400 to-teal-400{% else %}bg-gradient-to-r from-rose-400 to-pink-400{% endif %}"></div>
+
+        <div class="relative p-8 text-center">
+            <!-- Icon -->
+            <div class="w-20 h-20 rounded-2xl mx-auto mb-5 flex items-center justify-center shadow-lg
+                {% if attempt.passed %}bg-gradient-to-br from-emerald-500 to-teal-500 shadow-emerald-500/30
+                {% else %}bg-gradient-to-br from-rose-500 to-pink-500 shadow-rose-500/30{% endif %}">
+                {% if attempt.passed %}
+                <svg class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                </svg>
+                {% else %}
+                <svg class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                {% endif %}
+            </div>
+
+            <h1 class="text-3xl font-black mb-1
+                {% if attempt.passed %}text-emerald-600 dark:text-emerald-400
+                {% else %}text-rose-600 dark:text-rose-400{% endif %}">
+                {% if attempt.passed %}Congratulations!{% else %}Better Luck Next Time{% endif %}
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mb-8">{{ attempt.exam.title }}</p>
+
+            <!-- Score Circle -->
+            <div class="flex items-center justify-center gap-8 mb-8">
+                <div class="text-center">
+                    <p class="text-5xl font-black {% if attempt.passed %}text-emerald-600 dark:text-emerald-400{% else %}text-rose-600 dark:text-rose-400{% endif %}">
+                        {{ attempt.percentage|floatformat:0 }}%
+                    </p>
+                    <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Your Score</p>
+                </div>
+                <div class="h-16 w-px bg-slate-200 dark:bg-slate-700"></div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-slate-700 dark:text-slate-300">{{ attempt.raw_score }}/{{ attempt.total_marks }}</p>
+                    <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Marks</p>
+                </div>
+                <div class="h-16 w-px bg-slate-200 dark:bg-slate-700"></div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-slate-700 dark:text-slate-300">{{ attempt.exam.pass_mark }}%</p>
+                    <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Pass Mark</p>
+                </div>
+            </div>
+
+            <!-- Meta -->
+            <div class="flex justify-center gap-6 text-xs text-slate-400 dark:text-slate-500 mb-8">
+                {% if attempt.status == 'TIMED_OUT' %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/20 text-rose-500">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Time Expired
+                </span>
+                {% endif %}
+                {% if attempt.submitted_at %}
+                <span>Submitted: {{ attempt.submitted_at|date:"d M Y, H:i" }}</span>
+                {% endif %}
+                {% if attempt.started_at and attempt.submitted_at %}
+                <span>Duration: {% with dur=attempt.submitted_at|timeuntil:attempt.started_at %}{{ dur }}{% endwith %}</span>
+                {% endif %}
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-center gap-3">
+                <a href="{% url 'cbt:exam_list' %}"
+                   class="px-5 py-2.5 rounded-xl text-sm font-semibold
+                          bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300
+                          hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                    ← Back to Exams
+                </a>
+                <a href="{% url 'cbt:my_results' %}"
+                   class="px-5 py-2.5 rounded-xl text-sm font-semibold
+                          bg-gradient-to-r from-emerald-500 to-teal-500 text-white
+                          hover:from-emerald-600 hover:to-teal-600 shadow-sm transition">
+                    My Results History
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Per-Question Breakdown -->
+    {% if show_answers and question_results %}
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-700 dark:text-slate-300">Answer Review</h2>
+            <div class="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+                <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Correct</span>
+                <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span> Incorrect</span>
+                <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 inline-block"></span> Unanswered</span>
+            </div>
+        </div>
+
+        <div class="divide-y divide-slate-100 dark:divide-slate-800">
+            {% for result in question_results %}
+            <div class="p-5 sm:p-6">
+                <div class="flex items-start gap-3 mb-4">
+                    <!-- Status icon -->
+                    {% if result.selected_option is None %}
+                    <span class="mt-0.5 w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                        <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>
+                    </span>
+                    {% elif result.is_correct %}
+                    <span class="mt-0.5 w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center shrink-0">
+                        <svg class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                    {% else %}
+                    <span class="mt-0.5 w-6 h-6 rounded-full bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center shrink-0">
+                        <svg class="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </span>
+                    {% endif %}
+
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug">{{ forloop.counter }}. {{ result.question.text }}</p>
+                    </div>
+                    <span class="shrink-0 text-xs font-semibold {% if result.is_correct %}text-emerald-600 dark:text-emerald-400{% else %}text-slate-400{% endif %}">
+                        {% if result.is_correct %}+{% endif %}{{ result.question.marks }} mark{% if result.question.marks != 1 %}s{% endif %}
+                    </span>
+                </div>
+
+                <div class="ml-9 space-y-2">
+                    {% for option in result.question.options.all %}
+                    <div class="flex items-center gap-2.5 text-sm px-3 py-2 rounded-lg
+                        {% if option.is_correct %}bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-semibold
+                        {% elif option == result.selected_option %}bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400
+                        {% else %}text-slate-500 dark:text-slate-400{% endif %}">
+                        {% if option.is_correct %}
+                        <svg class="h-3.5 w-3.5 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        {% elif option == result.selected_option %}
+                        <svg class="h-3.5 w-3.5 shrink-0 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        {% else %}
+                        <span class="w-3.5 h-3.5 shrink-0"></span>
+                        {% endif %}
+                        {{ option.text }}
+                        {% if option == result.selected_option and not option.is_correct %}
+                        <span class="ml-auto text-xs text-rose-400">(your answer)</span>
+                        {% endif %}
+                        {% if option.is_correct %}
+                        <span class="ml-auto text-xs text-emerald-500">(correct)</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'appraisals',
     'notifications',
     'hr_admin',
+    'cbt',
 ]
 
 MIDDLEWARE = [
