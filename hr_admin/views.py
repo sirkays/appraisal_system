@@ -575,17 +575,21 @@ def assign_approvers(request, cycle_pk):
     for role_code, role_label in ApprovalStep.ROLE_CHOICES:
         role_users[role_code] = CustomUser.objects.filter(role=role_code, is_active=True)
 
-    all_active_users = CustomUser.objects.filter(is_active=True)
-    if cycle.branch:
-        intended_department_ids = intended_staff.exclude(
-            department__isnull=True
-        ).values_list('department_id', flat=True)
-        all_active_users = all_active_users.filter(
-            Q(branches=cycle.branch) |
-            Q(department__in=cycle.target_departments.all()) |
-            Q(department_id__in=intended_department_ids) |
-            Q(id__in=cycle.target_staff.values_list('id', flat=True))
-        ).distinct()
+    intended_department_ids = intended_staff.exclude(
+        department__isnull=True
+    ).values_list('department_id', flat=True)
+    current_approver_ids = AppraisalApprovalAssignment.objects.filter(
+        appraisal__cycle=cycle,
+        appraisal__staff__in=intended_staff,
+        approver__isnull=False,
+    ).values_list('approver_id', flat=True)
+    all_active_users = CustomUser.objects.filter(
+        Q(department__in=cycle.target_departments.all()) |
+        Q(department_id__in=intended_department_ids) |
+        Q(id__in=cycle.target_staff.values_list('id', flat=True)) |
+        Q(id__in=current_approver_ids),
+        is_active=True,
+    ).distinct()
 
     # Build assignment map: {appraisal_pk: {step_number: assignment}}
     assignments_map = {}
