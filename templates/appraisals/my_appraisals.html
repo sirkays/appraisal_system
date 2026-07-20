@@ -33,21 +33,20 @@
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div class="bg-white dark:bg-slate-900/60 rounded-2xl p-5 border border-slate-200/70 dark:border-slate-800/50 shadow-sm">
             <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Total</p>
-            <p class="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">{{ appraisals.count }}</p>
+            <p class="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">{{ total_count }}</p>
             <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">All cycles</p>
         </div>
         <div class="bg-white dark:bg-slate-900/60 rounded-2xl p-5 border border-slate-200/70 dark:border-slate-800/50 shadow-sm">
             <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Submitted</p>
             <p class="text-3xl font-extrabold text-blue-600 dark:text-blue-400 mt-1">
-                {{ appraisals|length }}<!-- filtered in template below -->
-                {% with submitted=appraisals|dictsortreversed:"status" %}0{% endwith %}
+                {{ submitted_count }}
             </p>
             <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Awaiting review</p>
         </div>
         <div class="bg-white dark:bg-slate-900/60 rounded-2xl p-5 border border-slate-200/70 dark:border-slate-800/50 shadow-sm">
             <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Approved</p>
             <p class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
-                {% for a in appraisals %}{% if a.status == 'APPROVED' %}✓{% endif %}{% endfor %}
+                {{ approved_count }}
             </p>
             <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Finalised</p>
         </div>

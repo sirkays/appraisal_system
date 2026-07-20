@@ -461,8 +461,18 @@ def my_appraisals(request):
         .order_by('-cycle__start_date')
     )
     active_cycle = AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE).first()
+    submitted_statuses = [
+        Appraisal.SUBMITTED,
+        Appraisal.AWAITING_STEP_REVIEW,
+        Appraisal.RETURNED_TO_REVIEWER,
+    ]
+    approved_statuses = [Appraisal.APPROVED, Appraisal.STAFF_ACKNOWLEDGED]
+
     context = {
         'appraisals': appraisals,
+        'total_count': appraisals.count(),
+        'submitted_count': appraisals.filter(status__in=submitted_statuses).count(),
+        'approved_count': appraisals.filter(status__in=approved_statuses).count(),
         'active_cycle': active_cycle,
     }
     return render(request, 'appraisals/my_appraisals.html', context)

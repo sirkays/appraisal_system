@@ -241,3 +241,44 @@ class ReturnReasonVisibilityTests(TestCase):
         self.assertContains(response, "Attached my supporting document.")
         self.assertContains(response, "View attached evidence")
         self.assertContains(response, "/media/evidence/form_fields/supporting_document.docx")
+
+
+class MyAppraisalsStatsTests(TestCase):
+    def test_summary_counts_are_scoped_to_logged_in_user(self):
+        staff = CustomUser.objects.create_user(
+            username="staff_stats",
+            password="pass12345",
+            staff_id="STF-STATS-001",
+            role=CustomUser.STAFF,
+        )
+        other_staff = CustomUser.objects.create_user(
+            username="other_staff_stats",
+            password="pass12345",
+            staff_id="STF-STATS-002",
+            role=CustomUser.STAFF,
+        )
+        cycle = AppraisalCycle.objects.create(
+            name="Stats Review",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            status=AppraisalCycle.ACTIVE,
+            created_by=staff,
+        )
+        Appraisal.objects.create(
+            cycle=cycle,
+            staff=staff,
+            status=Appraisal.NOT_STARTED,
+        )
+        Appraisal.objects.create(
+            cycle=cycle,
+            staff=other_staff,
+            status=Appraisal.SUBMITTED,
+        )
+
+        self.client.login(username="staff_stats", password="pass12345")
+        response = self.client.get(reverse("appraisals:my_appraisals"))
+
+        self.assertEqual(response.context["total_count"], 1)
+        self.assertEqual(response.context["submitted_count"], 0)
+        self.assertEqual(response.context["approved_count"], 0)
+        self.assertContains(response, ">0</p>", html=False)
