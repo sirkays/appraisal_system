@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}My Review Queue{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+        <span class="text-2xl">📋</span> My Review Queue
+      </h1>
+      <p class="mt-1 text-sm text-slate-500">Appraisals currently awaiting your action</p>
+    </div>
+    {% if active_cycle %}
+    <div>
+      <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+        {{ active_cycle.name }}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Pending Assignments -->
+  <div>
+    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2">Pending Your Action ({{ current_pending|length }})</h2>
+
+    {% if current_pending %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for assignment in current_pending %}
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow relative border-l-4 border-l-amber-500 flex flex-col">
+        <div class="p-5 flex items-center gap-3">
+          <div class="w-11 h-11 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center flex-shrink-0">
+            {{ assignment.appraisal.staff.first_name|first }}{{ assignment.appraisal.staff.last_name|first }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-base font-bold text-slate-900 truncate">{{ assignment.appraisal.staff.get_full_name }}</h3>
+            <p class="text-xs text-slate-500 truncate">{{ assignment.appraisal.staff.designation|default:"" }} &bull; {{ assignment.appraisal.staff.department.name|default:"—" }}</p>
+          </div>
+        </div>
+        
+        <div class="px-5 py-4 border-t border-slate-100 bg-slate-50 flex-1 space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-500">Step</span>
+            <span class="text-sm font-bold text-slate-900">{{ assignment.step.label }} (Step {{ assignment.step.step_number }})</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-500">Cycle</span>
+            <span class="text-sm font-medium text-slate-900">{{ assignment.appraisal.cycle.name }}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-500">Self Score</span>
+            <span class="text-sm font-bold text-indigo-600">{{ assignment.appraisal.overall_self_score|default:"Not scored" }}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-500">Submitted</span>
+            <span class="text-sm font-medium text-slate-900">{{ assignment.appraisal.self_submitted_at|date:"d M Y"|default:"—" }}</span>
+          </div>
+          
+          <!-- Progress bar -->
+          <div class="pt-2">
+            <div class="flex justify-between text-xs text-slate-500 mb-1">
+              <span>Step {{ assignment.appraisal.current_step_number }} of {{ assignment.appraisal.total_steps }}</span>
+            </div>
+            <div class="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+              <div class="h-full bg-indigo-500 rounded-full" style="width: {{ assignment.appraisal.progress_percent }}%"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="p-4 border-t border-slate-100">
+          <a href="{% url 'appraisals:step_review' pk=assignment.appraisal.pk %}" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+            Review Now &rarr;
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-12 bg-white border-2 border-dashed border-slate-300 rounded-xl">
+      <div class="mx-auto h-12 w-12 text-4xl mb-4">🎉</div>
+      <h3 class="mt-2 text-sm font-medium text-slate-900">All Clear!</h3>
+      <p class="mt-1 text-sm text-slate-500">You have no appraisals currently waiting for your review.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Past Review History -->
+  {% if past_actions %}
+  <div class="mt-12">
+    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2">Recent Review History</h2>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200">
+          <thead class="bg-slate-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Staff Member</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cycle</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Step</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+              <th scope="col" class="relative px-6 py-3"><span class="sr-only">View</span></th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-slate-200">
+            {% for assignment in past_actions %}
+            <tr class="hover:bg-slate-50">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
+                    {{ assignment.appraisal.staff.first_name|first }}{{ assignment.appraisal.staff.last_name|first }}
+                  </div>
+                  <div class="ml-4">
+                    <div class="text-sm font-medium text-slate-900">{{ assignment.appraisal.staff.get_full_name }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{{ assignment.appraisal.cycle.name }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">Step {{ assignment.step.step_number }}: {{ assignment.step.label }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase
+                  {% if assignment.status == 'APPROVED' %}bg-emerald-100 text-emerald-800
+                  {% elif assignment.status == 'RETURNED' %}bg-red-100 text-red-800
+                  {% else %}bg-amber-100 text-amber-800{% endif %}">
+                  {{ assignment.get_status_display }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{{ assignment.actioned_at|date:"d M Y H:i"|default:"—" }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <a href="{% url 'appraisals:appraisal_result' pk=assignment.appraisal.pk %}" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors">View</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,377 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Review: {{ appraisal.staff.get_full_name }} — {{ appraisal.cycle.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-1">
+            <a href="{% url 'accounts:dashboard_redirect' %}" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-2xl font-extrabold text-slate-900 dark:text-slate-100">Appraisal Review</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400">
+                    {{ appraisal.staff.get_full_name }} &middot; {{ appraisal.cycle.name }}
+                    {% if current_step %}&middot; <span class="text-emerald-600 dark:text-emerald-400 font-semibold">{{ current_step.label }}</span>{% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Django Messages -->
+    {% for message in messages %}
+        <div class="mb-6 p-4 rounded-xl border text-sm font-semibold
+            {% if message.tags == 'error' %}bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 text-red-800 dark:text-red-300
+            {% else %}bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300{% endif %}">
+            {{ message }}
+        </div>
+    {% endfor %}
+
+    <!-- Approval progress -->
+    {% if all_assignments %}
+    <div class="mb-8 p-5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800">
+        <h3 class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-3">Approval Workflow</h3>
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="px-3 py-1.5 text-xs font-semibold rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                {{ appraisal.staff.get_full_name }} (Staff)
+            </span>
+            {% for assignment in all_assignments %}
+            <svg class="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+            <span class="px-3 py-1.5 text-xs font-semibold rounded-full
+                {% if assignment.status == 'APPROVED' %}bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300
+                {% elif assignment.status == 'RETURNED' %}bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300
+                {% elif appraisal.current_step_number == assignment.step.step_number %}bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 ring-2 ring-blue-400
+                {% else %}bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400{% endif %}">
+                {{ assignment.step.label }}
+                {% if assignment.approver %}<span class="opacity-60 ml-1">({{ assignment.approver.get_full_name }})</span>{% endif %}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="review-form">
+        {% csrf_token %}
+
+        <!-- =========================================================
+             SECTION: APPRAISEE RESPONSES (Read-only)
+             ========================================================= -->
+        {% if appraisee_sections_data %}
+        <div class="mb-6">
+            <h2 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span class="h-px flex-1 bg-slate-200 dark:bg-slate-700"></span>
+                <span>Appraisee Responses</span>
+                <span class="h-px flex-1 bg-slate-200 dark:bg-slate-700"></span>
+            </h2>
+            {% for sec_data in appraisee_sections_data %}
+            {% with section=sec_data.section fields=sec_data.fields %}
+            <div class="mb-6 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                    <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ section.name }}</h3>
+                    {% if section.description %}<p class="text-xs text-slate-500 mt-0.5">{{ section.description }}</p>{% endif %}
+                </div>
+                <div class="px-6 py-5 space-y-6">
+                    {% for item in fields %}
+                    {% with field=item.field response=item.response %}
+                    <div>
+                        <div class="flex items-start justify-between mb-1">
+                            <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ field.label }}</label>
+                            {% if field.field_type == FIELD_TYPE.SCORE or field.field_type == FIELD_TYPE.SCORE_COMMENT %}
+                            <span class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 px-2 py-0.5 rounded-lg">Max: {{ field.max_score }}</span>
+                            {% endif %}
+                        </div>
+                        {% if field.description %}<p class="text-xs text-slate-400 italic mb-2">{{ field.description }}</p>{% endif %}
+
+                        <!-- Appraisee's response (read-only) -->
+                        {% if response %}
+                            {% if field.field_type == FIELD_TYPE.NARRATIVE %}
+                                <div class="mt-1 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap min-h-[60px]">{{ response.text_response|default:"— No response —" }}</div>
+                            {% elif field.field_type == FIELD_TYPE.SCORE %}
+                                <div class="flex items-center gap-3 mt-1">
+                                    <span class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ response.score|default:"—" }}</span>
+                                    <span class="text-sm text-slate-400">/ {{ field.max_score }}</span>
+                                </div>
+                            {% elif field.field_type == FIELD_TYPE.SCORE_COMMENT %}
+                                <div class="flex items-center gap-3 mt-1 mb-2">
+                                    <span class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ response.score|default:"—" }}</span>
+                                    <span class="text-sm text-slate-400">/ {{ field.max_score }}</span>
+                                </div>
+                                {% if response.text_response %}<div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300">{{ response.text_response }}</div>{% endif %}
+                            {% elif field.field_type == FIELD_TYPE.SINGLE_SELECT or field.field_type == FIELD_TYPE.MULTI_SELECT %}
+                                <div class="flex flex-wrap gap-2 mt-1">
+                                    {% for opt in response.selected_options %}
+                                        <span class="px-3 py-1 text-sm rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">{{ opt }}</span>
+                                    {% empty %}
+                                        <span class="text-sm text-slate-400">— No selection —</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="mt-1 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-400">
+                                Not yet filled by the appraisee.
+                            </div>
+                        {% endif %}
+
+                        <!-- Mode B: Reviewer can score this field -->
+                        {% if item.can_score and is_editable %}
+                        <div class="mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+                            <label class="block text-xs font-bold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wide">Your Score on This Field (Max: {{ field.reviewer_score_max }})</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="modb_score_{{ field.id }}"
+                                       min="0" max="{{ field.reviewer_score_max }}" step="0.01"
+                                       value="{% if item.mode_b_score_resp and item.mode_b_score_resp.score is not None %}{{ item.mode_b_score_resp.score }}{% endif %}"
+                                       placeholder="0"
+                                       class="w-28 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                                <span class="text-sm text-blue-600 dark:text-blue-400">/ {{ field.reviewer_score_max }}</span>
+                            </div>
+                        </div>
+                        {% elif item.can_score and item.mode_b_score_resp %}
+                        <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700 text-sm">
+                            <span class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">Your Score: </span>
+                            <span class="font-bold text-slate-900 dark:text-slate-100">{{ item.mode_b_score_resp.score|default:"—" }}</span>
+                            <span class="text-slate-400"> / {{ field.reviewer_score_max }}</span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Mode B: Reviewer can comment on this field -->
+                        {% if item.can_comment and is_editable %}
+                        <div class="mt-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-700">
+                            <label class="block text-xs font-bold text-amber-700 dark:text-amber-400 mb-2 uppercase tracking-wide">Your Comment on This Field</label>
+                            <textarea name="modb_comment_{{ field.id }}" rows="2" placeholder="Add your comment on the appraisee's response…"
+                                      class="block w-full rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none resize-y">{% if item.mode_b_comment_resp %}{{ item.mode_b_comment_resp.text_response }}{% endif %}</textarea>
+                        </div>
+                        {% elif item.can_comment and item.mode_b_comment_resp and item.mode_b_comment_resp.text_response %}
+                        <div class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-700 text-sm">
+                            <span class="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide block mb-1">Your Comment:</span>
+                            <p class="text-slate-700 dark:text-slate-300">{{ item.mode_b_comment_resp.text_response }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endwith %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- =========================================================
+             SECTION: REVIEWER'S OWN FIELDS (Editable)
+             ========================================================= -->
+        {% if reviewer_sections_data %}
+        <div class="mb-6">
+            <h2 class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span class="h-px flex-1 bg-emerald-200 dark:bg-emerald-800"></span>
+                <span>Your Scoring Fields</span>
+                <span class="h-px flex-1 bg-emerald-200 dark:bg-emerald-800"></span>
+            </h2>
+            {% for sec_data in reviewer_sections_data %}
+            {% with section=sec_data.section fields=sec_data.fields %}
+            <div class="mb-6 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-emerald-200 dark:border-emerald-800 overflow-hidden">
+                <div class="px-6 py-4 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800">
+                    <h3 class="text-sm font-bold text-emerald-900 dark:text-emerald-200">{{ section.name }}</h3>
+                    {% if section.description %}<p class="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">{{ section.description }}</p>{% endif %}
+                </div>
+                <div class="px-6 py-5 space-y-6">
+                    {% for item in fields %}
+                    {% with field=item.field response=item.response %}
+                    <div>
+                        <div class="flex items-start justify-between mb-1">
+                            <label for="rev-input-{{ field.id }}" class="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                {{ field.label }}
+                                {% if field.is_required %}<span class="text-red-500 ml-0.5">*</span>{% endif %}
+                            </label>
+                            {% if field.field_type == FIELD_TYPE.SCORE or field.field_type == FIELD_TYPE.SCORE_COMMENT %}
+                            <span class="text-xs bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-lg font-medium whitespace-nowrap ml-4">
+                                {{ field.min_score|floatformat:0 }} – {{ field.max_score|floatformat:0 }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if field.description %}<p class="text-xs text-slate-400 italic mb-2">{{ field.description }}</p>{% endif %}
+
+                        {% if field.field_type == FIELD_TYPE.NARRATIVE %}
+                            <textarea id="rev-input-{{ field.id }}" name="field_{{ field.id }}"
+                                      rows="4" placeholder="Enter your response…"
+                                      {% if not is_editable %}readonly{% endif %}
+                                      class="block w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-y
+                                             {% if not is_editable %}opacity-75 cursor-not-allowed{% endif %}">{% if response %}{{ response.text_response }}{% endif %}</textarea>
+
+                        {% elif field.field_type == FIELD_TYPE.SCORE %}
+                            <div class="flex items-center gap-3">
+                                <input type="number" id="rev-input-{{ field.id }}" name="field_{{ field.id }}"
+                                       min="{{ field.min_score }}" max="{{ field.max_score }}" step="0.01"
+                                       value="{% if response and response.score is not None %}{{ response.score }}{% endif %}"
+                                       placeholder="0"
+                                       {% if not is_editable %}readonly{% endif %}
+                                       class="w-36 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none
+                                              {% if not is_editable %}opacity-75 cursor-not-allowed{% endif %}">
+                                <span class="text-sm text-slate-400">out of {{ field.max_score }}</span>
+                            </div>
+
+                        {% elif field.field_type == FIELD_TYPE.SCORE_COMMENT %}
+                            <div class="space-y-3">
+                                <div class="flex items-center gap-3">
+                                    <input type="number" id="rev-input-{{ field.id }}" name="field_{{ field.id }}_score"
+                                           min="{{ field.min_score }}" max="{{ field.max_score }}" step="0.01"
+                                           value="{% if response and response.score is not None %}{{ response.score }}{% endif %}"
+                                           placeholder="0"
+                                           {% if not is_editable %}readonly{% endif %}
+                                           class="w-36 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none
+                                                  {% if not is_editable %}opacity-75 cursor-not-allowed{% endif %}">
+                                    <span class="text-sm text-slate-400">out of {{ field.max_score }}</span>
+                                </div>
+                                <textarea name="field_{{ field.id }}_comment" rows="3" placeholder="Add a comment…"
+                                          {% if not is_editable %}readonly{% endif %}
+                                          class="block w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-y
+                                                 {% if not is_editable %}opacity-75 cursor-not-allowed{% endif %}">{% if response %}{{ response.text_response }}{% endif %}</textarea>
+                            </div>
+
+                        {% elif field.field_type == FIELD_TYPE.SINGLE_SELECT %}
+                            <div class="space-y-2">
+                                {% for option in field.options %}
+                                <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                                    <input type="radio" name="field_{{ field.id }}" value="{{ option }}"
+                                           {% if response and option in response.selected_options %}checked{% endif %}
+                                           {% if not is_editable %}disabled{% endif %}
+                                           class="text-emerald-600 focus:ring-emerald-500">
+                                    <span class="text-sm text-slate-700 dark:text-slate-300">{{ option }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+
+                        {% elif field.field_type == FIELD_TYPE.MULTI_SELECT %}
+                            <div class="space-y-2">
+                                {% for option in field.options %}
+                                <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                                    <input type="checkbox" name="field_{{ field.id }}" value="{{ option }}"
+                                           {% if response and option in response.selected_options %}checked{% endif %}
+                                           {% if not is_editable %}disabled{% endif %}
+                                           class="rounded text-emerald-600 focus:ring-emerald-500">
+                                    <span class="text-sm text-slate-700 dark:text-slate-300">{{ option }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endwith %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        {% if is_editable %}
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
+            <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">Action</h3>
+            <div>
+                <label class="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-1">Comments (optional)</label>
+                <textarea name="comments" rows="3" placeholder="Add a general comment about this review…"
+                          class="block w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-y">{% if current_assignment %}{{ current_assignment.comments }}{% endif %}</textarea>
+            </div>
+        </div>
+
+        <!-- Return modal -->
+        <div id="return-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6 max-w-md w-full">
+                <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 mb-3">Return for Revision</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Provide a reason for returning this appraisal.</p>
+                <textarea id="return-comment-input" rows="4" placeholder="Reason for returning…"
+                          class="block w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 outline-none resize-y"></textarea>
+                <div class="flex gap-3 mt-4">
+                    <button type="button" onclick="closeReturnModal()"
+                            class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="submitReturn()"
+                            class="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition">
+                        Confirm Return
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden fields injected by JS before submit -->
+        <input type="hidden" id="hidden-action" name="action" value="">
+        <input type="hidden" id="hidden-return-comment" name="return_comment" value="">
+
+        <div class="flex flex-col sm:flex-row gap-4 justify-end sticky bottom-6">
+            <button type="submit" name="action" value="save_draft"
+                    class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition bg-white dark:bg-slate-900 shadow-sm">
+                Save Draft
+            </button>
+            <button type="button"
+                    onclick="openReturnModal()"
+                    class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border-2 border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 font-semibold text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition bg-white dark:bg-slate-900 shadow-sm">
+                Return for Revision
+            </button>
+            <button type="submit" name="action" value="approve"
+                    onclick="return confirm('Approve and forward this appraisal to the next step?')"
+                    class="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl text-white font-bold text-sm
+                           bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700
+                           shadow-lg shadow-emerald-500/25 transition">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+                {% if current_step %}{{ current_step.action_label_approve }}{% else %}Approve{% endif %}
+            </button>
+        </div>
+
+        <script>
+        function openReturnModal() {
+            document.getElementById('return-comment-input').value = '';
+            document.getElementById('return-modal').classList.remove('hidden');
+        }
+
+        function closeReturnModal() {
+            document.getElementById('return-modal').classList.add('hidden');
+        }
+
+        function submitReturn() {
+            var comment = document.getElementById('return-comment-input').value.trim();
+            if (!comment) {
+                alert('Please provide a reason for returning the appraisal.');
+                document.getElementById('return-comment-input').focus();
+                return;
+            }
+            // Set the hidden fields so Django sees action=return and return_comment
+            document.getElementById('hidden-action').value = 'return';
+            document.getElementById('hidden-return-comment').value = comment;
+            // Disable the other submit buttons so they don't interfere
+            document.querySelectorAll('#review-form button[type="submit"]').forEach(function(btn) {
+                btn.disabled = true;
+            });
+            document.getElementById('review-form').submit();
+        }
+
+        // Close modal when clicking the backdrop
+        document.getElementById('return-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeReturnModal();
+        });
+        </script>
+
+        {% else %}
+        <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-center mt-4">
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+                {% if is_hr_admin %}
+                    You are viewing this appraisal as HR Administrator (read-only).
+                {% else %}
+                    This appraisal is not currently in your action queue.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

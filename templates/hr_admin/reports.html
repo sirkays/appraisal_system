@@ -35,7 +35,7 @@
         <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Under Review</p>
             <p class="mt-2 text-3xl font-extrabold text-blue-600 dark:text-blue-400">
-                {{ appraisal_stats.submitted|add:appraisal_stats.under_review|add:appraisal_stats.reviewed }}
+                {{ appraisal_stats.submitted|add:appraisal_stats.in_review }}
             </p>
             <p class="text-xs text-slate-500 mt-1">Supervisor & HOD queue</p>
         </div>
@@ -75,10 +75,10 @@
             <div>
                 <div class="flex items-center justify-between text-sm font-medium mb-1">
                     <span class="text-blue-600 dark:text-blue-400">Submitted & Under Review</span>
-                    <span class="text-slate-900 dark:text-white">{{ appraisal_stats.submitted|add:appraisal_stats.under_review }}</span>
+                    <span class="text-slate-900 dark:text-white">{{ appraisal_stats.submitted|add:appraisal_stats.in_review }}</span>
                 </div>
                 <div class="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div class="h-full bg-blue-500" style="width: {% widthratio appraisal_stats.submitted|add:appraisal_stats.under_review appraisal_stats.total|default:1 100 %}%;"></div>
+                    <div class="h-full bg-blue-500" style="width: {% widthratio appraisal_stats.submitted|add:appraisal_stats.in_review appraisal_stats.total|default:1 100 %}%;"></div>
                 </div>
             </div>
 

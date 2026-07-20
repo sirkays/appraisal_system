@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Directorate Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+        <span class="text-2xl">🏛️</span> Directorate Overview
+      </h1>
+      <p class="mt-1 text-sm text-slate-500">Executive performance appraisal dashboard</p>
+    </div>
+    {% if active_cycle %}
+    <div class="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-100 border border-emerald-200">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
+      <span class="text-sm font-semibold text-emerald-800">{{ active_cycle.name }}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Summary KPIs -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 hover:shadow-md transition-shadow border-l-4 border-l-indigo-500">
+      <div class="text-3xl">👥</div>
+      <div>
+        <div class="text-3xl font-black text-indigo-600 leading-none">{{ total_staff }}</div>
+        <div class="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Total Participants</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 hover:shadow-md transition-shadow border-l-4 border-l-amber-500">
+      <div class="text-3xl">⏳</div>
+      <div>
+        <div class="text-3xl font-black text-amber-500 leading-none">{{ awaiting_my_review }}</div>
+        <div class="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Awaiting My Review</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 hover:shadow-md transition-shadow border-l-4 border-l-emerald-500">
+      <div class="text-3xl">✅</div>
+      <div>
+        <div class="text-3xl font-black text-emerald-500 leading-none">{{ approved_count }}</div>
+        <div class="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Approved</div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+      <div class="text-3xl">📊</div>
+      <div>
+        <div class="text-3xl font-black text-blue-500 leading-none">{{ completion_pct }}%</div>
+        <div class="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Completion Rate</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- My Pending Review Queue -->
+  {% if pending_assignments %}
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+      <h3 class="text-base font-bold text-slate-900">My Review Queue</h3>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">{{ pending_assignments|length }} Pending</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200">
+        <thead class="bg-slate-50">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Staff Member</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Department</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Step</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Self Score</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Submitted</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-slate-200">
+          {% for assignment in pending_assignments %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                  {{ assignment.appraisal.staff.first_name|first }}{{ assignment.appraisal.staff.last_name|first }}
+                </div>
+                <div>
+                  <div class="text-sm font-bold text-slate-900">{{ assignment.appraisal.staff.get_full_name }}</div>
+                  <div class="text-[10px] text-slate-500">{{ assignment.appraisal.staff.designation }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{{ assignment.appraisal.staff.department.name|default:"—" }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">Step {{ assignment.step.step_number }}: {{ assignment.step.label }}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200">{{ assignment.appraisal.overall_self_score|default:"—" }}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{{ assignment.appraisal.self_submitted_at|date:"d M Y"|default:"—" }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <a href="{% url 'appraisals:step_review' pk=assignment.appraisal.pk %}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none transition-colors">Review</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if active_cycle %}
+  <!-- Org-Wide Completion Progress -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+      <h3 class="text-base font-bold text-slate-900">Organisation-Wide Progress</h3>
+      <div class="flex items-baseline gap-2">
+        <span class="text-2xl font-black text-indigo-600">{{ completion_pct }}%</span>
+        <span class="text-xs text-slate-500 uppercase font-semibold">Complete</span>
+      </div>
+    </div>
+    <div class="p-6">
+      <div class="h-8 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+        <div class="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full flex items-center px-4 transition-all duration-1000" style="width: {{ completion_pct }}%; min-width: 15%;">
+          <span class="text-xs font-bold text-white drop-shadow-md whitespace-nowrap">{{ approved_count }} / {{ total_staff }} Approved</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Department Breakdown -->
+  {% if dept_summaries %}
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+      <h3 class="text-base font-bold text-slate-900">Department Breakdown</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200">
+        <thead class="bg-slate-50">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Department</th>
+            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Total</th>
+            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Not Started</th>
+            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">In Progress</th>
+            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Approved</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Completion</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-slate-200">
+          {% for dept_data in dept_summaries %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{{ dept_data.department.name }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-slate-700 font-medium">{{ dept_data.total }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600">{{ dept_data.not_started }}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">{{ dept_data.in_progress }}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">{{ dept_data.approved }}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center gap-3">
+                <div class="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full {% if dept_data.completion_pct == 100 %}bg-emerald-500{% else %}bg-indigo-500{% endif %}" style="width: {{ dept_data.completion_pct }}%"></div>
+                </div>
+                <span class="text-xs font-bold text-slate-600">{{ dept_data.completion_pct }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- All Appraisals Table -->
+  {% if all_appraisals %}
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+      <h3 class="text-base font-bold text-slate-900">All Appraisals</h3>
+      <span class="text-xs text-slate-500">Showing up to 50 records</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200">
+        <thead class="bg-slate-50">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Staff Member</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Department</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Self Score</th>
+            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Final Score</th>
+            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-slate-200">
+          {% for appraisal in all_appraisals %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                  {{ appraisal.staff.first_name|first }}{{ appraisal.staff.last_name|first }}
+                </div>
+                <div>
+                  <div class="text-sm font-bold text-slate-900">{{ appraisal.staff.get_full_name }}</div>
+                  <div class="text-[10px] text-slate-500">{{ appraisal.staff.designation }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{{ appraisal.staff.department.name|default:"—" }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+                {% if appraisal.status == 'NOT_STARTED' %}bg-slate-100 text-slate-600
+                {% elif appraisal.status == 'DRAFT' %}bg-indigo-100 text-indigo-800
+                {% elif appraisal.status == 'SUBMITTED' or appraisal.status == 'AWAITING_STEP_REVIEW' %}bg-amber-100 text-amber-800
+                {% elif appraisal.status == 'APPROVED' or appraisal.status == 'STAFF_ACKNOWLEDGED' %}bg-emerald-100 text-emerald-800
+                {% elif appraisal.status == 'RETURNED_TO_STAFF' %}bg-red-100 text-red-800
+                {% endif %}">
+                {{ appraisal.get_status_display }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200">{{ appraisal.overall_self_score|default:"—" }}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">{{ appraisal.final_score|default:"—" }}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right">
+              <a href="{% url 'appraisals:appraisal_result' pk=appraisal.pk %}" class="inline-flex items-center px-3 py-1.5 border border-slate-300 text-xs font-medium rounded shadow-sm text-slate-700 bg-white hover:bg-slate-50 focus:outline-none transition-colors">View</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="text-center py-16 bg-white border-2 border-dashed border-slate-300 rounded-xl">
+    <div class="mx-auto h-12 w-12 text-4xl mb-4">📋</div>
+    <h3 class="mt-2 text-sm font-bold text-slate-900">No Active Cycle</h3>
+    <p class="mt-1 text-sm text-slate-500">There is no active appraisal cycle at this time.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

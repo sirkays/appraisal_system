@@ -4,56 +4,207 @@
 {% block title %}Create Appraisal Cycle{% endblock %}
 
 {% block extra_head %}
-<!-- Select2 CSS for searchable dropdowns -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
 <style>
-    /* Modernize Select2 to match Tailwind */
-    .select2-container--default .select2-selection--multiple,
-    .select2-container--default .select2-selection--single {
-        border-color: #e2e8f0;
-        border-radius: 0.5rem;
-        min-height: 42px;
-        padding: 4px;
-    }
-    .select2-container--default.select2-container--focus .select2-selection--multiple,
-    .select2-container--default.select2-container--focus .select2-selection--single {
-        border-color: #10b981; /* emerald-500 */
-        box-shadow: 0 0 0 1px #10b981;
-    }
-    .dark .select2-container--default .select2-selection--multiple,
-    .dark .select2-container--default .select2-selection--single {
-        background-color: #0f172a; /* slate-900 */
-        border-color: #1e293b; /* slate-800 */
-    }
-    .dark .select2-container--default .select2-selection--multiple .select2-selection__choice {
-        background-color: #1e293b;
-        border-color: #334155;
-        color: #f8fafc;
-    }
-    .dark .select2-dropdown {
-        background-color: #0f172a;
-        border-color: #1e293b;
-        color: #f8fafc;
-    }
-    .dark .select2-container--default .select2-results__option[aria-selected=true] {
-        background-color: #1e293b;
-    }
-    .dark .select2-container--default .select2-results__option--highlighted[aria-selected] {
-        background-color: #10b981;
-    }
+/* ── Premium TomSelect for Cycle Settings ── */
+
+/* Hide the default caret */
+.ts-wrapper .ts-control::after { display: none !important; }
+
+/* Main control */
+.ts-wrapper .ts-control {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
+    min-height: 42px !important;
+    font-size: 0.8125rem !important;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+    color: #1e293b !important;
+    background: linear-gradient(to bottom, #ffffff, #fafbfc) !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+    transition: all 0.2s ease !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    align-items: center !important;
+}
+.ts-wrapper .ts-control:hover {
+    border-color: #94a3b8 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+.ts-wrapper.focus .ts-control {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12) !important;
+    background: #ffffff !important;
+}
+
+/* Selected item chips */
+.ts-wrapper.multi .ts-control > .item {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    background: linear-gradient(135deg, #f0fdf4, #ecfdf5) !important;
+    border: 1px solid #a7f3d0 !important;
+    color: #065f46 !important;
+    border-radius: 6px !important;
+    padding: 2px 8px !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    line-height: 1.5 !important;
+    max-width: 200px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+.ts-wrapper.multi .ts-control > .item .remove {
+    color: #059669 !important;
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    margin-left: 2px !important;
+    border: none !important;
+    padding: 0 !important;
+}
+.ts-wrapper.multi .ts-control > .item .remove:hover {
+    color: #dc2626 !important;
+}
+
+/* Search input */
+.ts-control > input {
+    font-size: 0.8125rem !important;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+    color: #334155 !important;
+}
+.ts-control > input::placeholder {
+    color: #94a3b8 !important;
+}
+
+/* Dropdown panel */
+.ts-dropdown {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    margin-top: 4px !important;
+    padding: 4px !important;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.06) !important;
+    background: #ffffff !important;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+    animation: tsDropIn 0.15s ease-out !important;
+    z-index: 9999 !important;
+}
+@keyframes tsDropIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.ts-dropdown.dropup {
+    bottom: 100% !important;
+    top: auto !important;
+    margin-top: 0 !important;
+    margin-bottom: 4px !important;
+}
+.ts-dropdown .ts-dropdown-content {
+    max-height: 240px !important;
+    padding: 0 !important;
+    overflow-y: auto !important;
+}
+
+/* Options */
+.ts-dropdown .option {
+    padding: 0.5rem 0.625rem !important;
+    border-radius: 0.375rem !important;
+    font-size: 0.8125rem !important;
+    color: #334155 !important;
+    cursor: pointer !important;
+    transition: all 0.12s ease !important;
+    margin: 1px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+}
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+    background: linear-gradient(135deg, #f0fdf4, #ecfdf5) !important;
+    color: #065f46 !important;
+}
+.ts-dropdown .option.selected {
+    background: #ecfdf5 !important;
+    color: #065f46 !important;
+    font-weight: 600 !important;
+}
+.ts-dropdown .no-results {
+    padding: 1rem !important;
+    text-align: center !important;
+    color: #94a3b8 !important;
+    font-size: 0.8125rem !important;
+}
+
+/* Avatar for staff options */
+.cycle-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+.cycle-avatar.dept { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+.cycle-avatar.staff { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+
+/* Role badge */
+.cycle-badge {
+    font-size: 0.625rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    margin-left: auto;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+/* Counter badge shown when items overflow */
+.ts-selection-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-3xl mx-auto space-y-6">
-    <div class="flex items-center gap-4">
-        <a href="{% url 'hr_admin:cycle_list' %}" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        </a>
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">{{ action|default:"Create" }} Appraisal Cycle</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Start by giving the cycle a name and timeframe, and select target staff.</p>
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'hr_admin:cycle_list' %}" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 dark:text-white">{{ action|default:"Create" }} Appraisal Cycle</h1>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Start by giving the cycle a name and timeframe, and select target staff.</p>
+            </div>
         </div>
+        {% if cycle.pk %}
+        <div>
+            <a href="{% url 'hr_admin:approval_process_list' cycle_pk=cycle.pk %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors">
+                <svg class="mr-2 -ml-1 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Manage Approval Processes
+            </a>
+        </div>
+        {% endif %}
     </div>
 
     <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
@@ -69,7 +220,7 @@
                     <div class="mt-1">
                         <input type="text" name="name" id="name" required placeholder="e.g. Mid-Year Appraisal 2026"
                                value="{{ cycle.name|default:'' }}"
-                               class="block w-full rounded-md border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm py-2.5 px-3">
+                               class="mt-1 block w-full rounded-md border border-slate-300 bg-white text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 sm:text-sm py-2.5 px-3">
                     </div>
                     <p class="mt-1 text-xs text-slate-500">A clear, identifiable name for this review period.</p>
                 </div>
@@ -80,7 +231,7 @@
                         <div class="mt-1">
                             <input type="date" name="start_date" id="start_date"
                                    value="{{ cycle.start_date|date:'Y-m-d'|default:'' }}"
-                                   class="block w-full rounded-md border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm py-2.5 px-3">
+                                   class="mt-1 block w-full rounded-md border border-slate-300 bg-white text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 sm:text-sm py-2.5 px-3">
                         </div>
                     </div>
 
@@ -89,7 +240,7 @@
                         <div class="mt-1">
                             <input type="date" name="end_date" id="end_date"
                                    value="{{ cycle.end_date|date:'Y-m-d'|default:'' }}"
-                                   class="block w-full rounded-md border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm py-2.5 px-3">
+                                   class="mt-1 block w-full rounded-md border border-slate-300 bg-white text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 sm:text-sm py-2.5 px-3">
                         </div>
                     </div>
                 </div>
@@ -97,31 +248,45 @@
                 <div>
                     <label for="scoring_scale" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Scoring Scale Maximum</label>
                     <div class="mt-1">
-                        <select id="scoring_scale" name="scoring_scale" class="block w-full rounded-md border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm py-2.5 px-3">
+                        <select id="scoring_scale" name="scoring_scale" class="mt-1 block w-full rounded-md border border-slate-300 bg-white text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 sm:text-sm py-2.5 px-3">
                             <option value="5" {% if cycle.scoring_scale == 5 %}selected{% endif %}>1 to 5</option>
                             <option value="10" {% if cycle.scoring_scale == 10 %}selected{% endif %}>1 to 10</option>
                         </select>
                     </div>
                 </div>
 
+                <!-- Branch Selection -->
+                <div class="text-lg font-medium border-b border-slate-200 dark:border-slate-700 pb-2 mt-8 text-slate-800 dark:text-slate-200">Branch</div>
+                <p class="text-sm text-slate-500">Select the branch this cycle applies to. Departments and staff below will be filtered to this branch.</p>
+
+                <div>
+                    <label for="branch" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Branch *</label>
+                    <select id="branch" name="branch" required class="mt-1 block w-full rounded-md border border-slate-300 bg-white text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 sm:text-sm py-2.5 px-3" onchange="onBranchChange()">
+                        <option value="">-- Select a Branch --</option>
+                        {% for b in branches %}
+                        <option value="{{ b.id }}" {% if cycle.branch_id == b.id %}selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <!-- Targeting -->
                 <div class="text-lg font-medium border-b border-slate-200 dark:border-slate-700 pb-2 mt-8 text-slate-800 dark:text-slate-200">Targeting</div>
-                <p class="text-sm text-slate-500">Leave these blank to automatically assign this cycle to <strong>all active staff</strong> in the organization upon activation.</p>
+                <p class="text-sm text-slate-500">Leave these blank to automatically assign this cycle to <strong>all staff in the selected branch</strong> upon activation.</p>
 
                 <div>
                     <label for="target_departments" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target Specific Departments</label>
-                    <select id="target_departments" name="target_departments" multiple class="select2-search block w-full">
+                    <select id="target_departments" name="target_departments" multiple class="ts-multi-dept block w-full" placeholder="Search departments...">
                         {% for dept in departments %}
-                            <option value="{{ dept.id }}" {% if dept.id in target_dept_ids %}selected{% endif %}>{{ dept.name }}</option>
+                            <option value="{{ dept.id }}" data-code="{{ dept.code }}" {% if dept.id in target_dept_ids %}selected{% endif %}>{{ dept.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
                 <div>
                     <label for="target_staff" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target Specific Staff</label>
-                    <select id="target_staff" name="target_staff" multiple class="select2-search block w-full">
+                    <select id="target_staff" name="target_staff" multiple class="ts-multi-staff block w-full" placeholder="Search staff by name...">
                         {% for person in staff %}
-                            <option value="{{ person.id }}" {% if person.id in target_staff_ids %}selected{% endif %}>{{ person.full_name }} ({{ person.get_role_display }})</option>
+                            <option value="{{ person.id }}" data-role="{{ person.get_role_display }}" data-dept="{{ person.department.name|default:'—' }}" {% if person.id in target_staff_ids %}selected{% endif %}>{{ person.full_name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -266,17 +431,132 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- jQuery (required for Select2) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<!-- Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <script>
-    $(document).ready(function() {
-        $('.select2-search').select2({
-            placeholder: "Search and select...",
-            allowClear: true,
-            width: '100%'
-        });
+function getInitials(name) {
+    return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+}
+
+// Store current selections before branch change
+const preSelectedDepts = [{% for id in target_dept_ids %}{{ id }},{% endfor %}];
+const preSelectedStaff = [{% for id in target_staff_ids %}{{ id }},{% endfor %}];
+
+let deptSelect, staffSelect;
+
+function initTomSelects() {
+    // Department multi-select
+    deptSelect = new TomSelect('#target_departments', {
+        plugins: ['remove_button', 'checkbox_options'],
+        maxOptions: null,
+        render: {
+            option: function(data, escape) {
+                const initials = getInitials(data.text);
+                const code = data.code || '';
+                return `<div>
+                    <span class="cycle-avatar dept">${escape(initials)}</span>
+                    <span style="flex:1;">${escape(data.text)}</span>
+                    ${code ? `<span class="cycle-badge">${escape(code)}</span>` : ''}
+                </div>`;
+            },
+            item: function(data, escape) { return `<div>${escape(data.text)}</div>`; },
+            no_results: function() { return '<div class="no-results">No departments found</div>'; }
+        },
+        onDropdownOpen: function(dropdown) {
+            let controlRect = this.control.getBoundingClientRect();
+            let mainEl = document.querySelector('main');
+            let maxBottom = window.innerHeight || document.documentElement.clientHeight;
+            if (mainEl) {
+                let mainRect = mainEl.getBoundingClientRect();
+                maxBottom = Math.min(maxBottom, mainRect.bottom);
+            }
+            if (controlRect.bottom + 280 > maxBottom) {
+                dropdown.classList.add('dropup');
+            }
+        },
+        onDropdownClose: function(dropdown) {
+            dropdown.classList.remove('dropup');
+        }
     });
+
+    // Staff multi-select
+    staffSelect = new TomSelect('#target_staff', {
+        plugins: ['remove_button', 'checkbox_options'],
+        maxOptions: null,
+        render: {
+            option: function(data, escape) {
+                const initials = getInitials(data.text);
+                const role = data.role || '';
+                const dept = data.dept || '';
+                return `<div>
+                    <span class="cycle-avatar staff">${escape(initials)}</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:500;">${escape(data.text)}</div>
+                        <div style="font-size:0.6875rem;color:#94a3b8;margin-top:1px;">${escape(dept)}</div>
+                    </div>
+                    ${role ? `<span class="cycle-badge">${escape(role)}</span>` : ''}
+                </div>`;
+            },
+            item: function(data, escape) { return `<div>${escape(data.text)}</div>`; },
+            no_results: function() { return '<div class="no-results">No staff found</div>'; }
+        },
+        onDropdownOpen: function(dropdown) {
+            let controlRect = this.control.getBoundingClientRect();
+            let mainEl = document.querySelector('main');
+            let maxBottom = window.innerHeight || document.documentElement.clientHeight;
+            if (mainEl) {
+                let mainRect = mainEl.getBoundingClientRect();
+                maxBottom = Math.min(maxBottom, mainRect.bottom);
+            }
+            if (controlRect.bottom + 280 > maxBottom) {
+                dropdown.classList.add('dropup');
+            }
+        },
+        onDropdownClose: function(dropdown) {
+            dropdown.classList.remove('dropup');
+        }
+    });
+}
+
+function onBranchChange() {
+    const branchId = document.getElementById('branch').value;
+    if (!branchId) return;
+
+    fetch(`{% url 'hr_admin:api_branch_data' branch_pk=0 %}`.replace('/0/', `/${branchId}/`))
+        .then(r => r.json())
+        .then(data => {
+            // Destroy and rebuild department select
+            if (deptSelect) deptSelect.destroy();
+            const deptEl = document.getElementById('target_departments');
+            deptEl.innerHTML = '';
+            data.departments.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.name;
+                opt.setAttribute('data-code', d.code || '');
+                if (preSelectedDepts.includes(d.id)) opt.selected = true;
+                deptEl.appendChild(opt);
+            });
+
+            // Destroy and rebuild staff select
+            if (staffSelect) staffSelect.destroy();
+            const staffEl = document.getElementById('target_staff');
+            staffEl.innerHTML = '';
+            data.staff.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.full_name;
+                opt.setAttribute('data-role', s.role_display || '');
+                opt.setAttribute('data-dept', s.department || '—');
+                if (preSelectedStaff.includes(s.id)) opt.selected = true;
+                staffEl.appendChild(opt);
+            });
+
+            // Re-initialize TomSelects
+            initTomSelects();
+        });
+}
+
+// Initialize on page load
+initTomSelects();
 </script>
 {% endblock %}

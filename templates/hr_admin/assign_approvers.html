@@ -1,0 +1,807 @@
+{% extends "base.html" %}
+{% load hr_admin_filters %}
+
+{% block title %}Assign Approvers — {{ cycle.name }}{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+<style>
+/* ── Premium TomSelect Overrides ── */
+
+/* Hide the default caret arrow */
+.ts-wrapper .ts-control::after {
+    display: none !important;
+}
+
+/* Main control (input area) */
+.ts-wrapper.single .ts-control,
+.ts-wrapper .ts-control {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
+    min-height: 38px !important;
+    font-size: 0.8125rem !important;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+    color: #1e293b !important;
+    background: linear-gradient(to bottom, #ffffff, #fafbfc) !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+}
+.ts-wrapper.single .ts-control:hover,
+.ts-wrapper .ts-control:hover {
+    border-color: #94a3b8 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+.ts-wrapper.single.focus .ts-control,
+.ts-wrapper.focus .ts-control {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12) !important;
+    background: #ffffff !important;
+}
+
+/* Search input inside the control */
+.ts-control > input {
+    font-size: 0.8125rem !important;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+    color: #334155 !important;
+}
+.ts-control > input::placeholder {
+    color: #94a3b8 !important;
+    font-style: normal !important;
+}
+
+/* Dropdown panel */
+.ts-dropdown {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    margin-top: 4px !important;
+    padding: 4px !important;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.06) !important;
+    background: #ffffff !important;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+    animation: tsDropIn 0.15s ease-out !important;
+    z-index: 9999 !important;
+    overflow: hidden !important;
+}
+.ts-dropdown.dropup {
+    bottom: 100% !important;
+    top: auto !important;
+    margin-top: 0 !important;
+    margin-bottom: 4px !important;
+}
+@keyframes tsDropIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Dropdown content area */
+.ts-dropdown .ts-dropdown-content {
+    max-height: 220px !important;
+    padding: 0 !important;
+}
+
+/* Individual options */
+.ts-dropdown .option {
+    padding: 0.5rem 0.625rem !important;
+    border-radius: 0.375rem !important;
+    font-size: 0.8125rem !important;
+    color: #334155 !important;
+    cursor: pointer !important;
+    transition: all 0.12s ease !important;
+    margin: 1px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+}
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+    background: linear-gradient(135deg, #f0fdf4, #ecfdf5) !important;
+    color: #065f46 !important;
+}
+.ts-dropdown .option.selected {
+    background: #ecfdf5 !important;
+    color: #065f46 !important;
+    font-weight: 600 !important;
+}
+
+/* No results message */
+.ts-dropdown .no-results {
+    padding: 1rem !important;
+    text-align: center !important;
+    color: #94a3b8 !important;
+    font-size: 0.8125rem !important;
+}
+
+/* Custom avatar circle for person options */
+.ts-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.ts-avatar.role-SUPERVISOR   { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.ts-avatar.role-HOD          { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+.ts-avatar.role-DIRECTORATE  { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.ts-avatar.role-HR_ADMIN     { background: linear-gradient(135deg, #10b981, #059669); }
+.ts-avatar.role-STAFF        { background: linear-gradient(135deg, #64748b, #475569); }
+.ts-avatar.role-dynamic      { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+
+/* Role badge */
+.ts-role-badge {
+    font-size: 0.625rem;
+    font-weight: 600;
+    padding: 0.125rem 0.375rem;
+    border-radius: 9999px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+.ts-role-badge.badge-SUPERVISOR   { background: #dbeafe; color: #1d4ed8; }
+.ts-role-badge.badge-HOD          { background: #ede9fe; color: #6d28d9; }
+.ts-role-badge.badge-DIRECTORATE  { background: #fef3c7; color: #b45309; }
+.ts-role-badge.badge-HR_ADMIN     { background: #d1fae5; color: #047857; }
+.ts-role-badge.badge-STAFF        { background: #f1f5f9; color: #475569; }
+
+/* Compact variant for table cells */
+.ts-compact .ts-control {
+    min-height: 32px !important;
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.75rem !important;
+}
+.ts-compact .ts-dropdown .option {
+    padding: 0.375rem 0.5rem !important;
+    font-size: 0.75rem !important;
+}
+.ts-compact .ts-avatar {
+    width: 20px;
+    height: 20px;
+    font-size: 0.5625rem;
+}
+
+/* Unassigned state styling */
+.ts-unassigned .ts-control {
+    border-color: #fca5a5 !important;
+    background: linear-gradient(to bottom, #fff5f5, #fef2f2) !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <a href="{% url 'hr_admin:approval_process_list' cycle_pk=cycle.pk %}" class="p-2 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+      </a>
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900">Assign Approvers</h1>
+        <p class="mt-1 text-sm text-slate-500">Route appraisals for <strong>{{ cycle.name }}</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Actions Card -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <h3 class="text-base font-bold text-slate-900 mb-4">Bulk Auto-Assignment</h3>
+    <div class="flex flex-wrap items-end gap-4">
+      <div class="w-full sm:w-64">
+        <label class="block text-sm font-medium text-slate-700 mb-1">Target Step</label>
+        <select id="bulkStepId" class="block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" onchange="handleStepOrTypeChange()">
+          {% for step in general_process.steps.all %}
+          <option value="{{ step.id }}">Step {{ step.step_number }}: {{ step.label }} ({{ step.get_role_required_display }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="w-full sm:w-48">
+        <label class="block text-sm font-medium text-slate-700 mb-1">Assignment Type</label>
+        <select id="bulkType" class="block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" onchange="handleStepOrTypeChange()">
+          <option value="dynamic">Dynamic Rule</option>
+          <option value="specific">Specific Person</option>
+        </select>
+      </div>
+      <div class="w-full sm:w-64 relative">
+        <div class="flex justify-between items-end mb-1">
+          <label class="block text-sm font-medium text-slate-700">Assignment Logic</label>
+          <label class="inline-flex items-center cursor-pointer" id="logicToggleContainer" style="display: none;">
+            <input type="checkbox" id="logicToggle" class="sr-only peer" onchange="toggleLogicDropdown()">
+            <div class="relative w-7 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+            <span class="ms-2 text-[10px] font-medium text-slate-500" id="logicToggleLabel">Force Options</span>
+          </label>
+        </div>
+        <select id="bulkLogic" class="block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm">
+          <!-- Populated by JS -->
+        </select>
+        <p id="logicWarning" class="text-xs text-amber-600 hidden mt-1 absolute top-[calc(100%+4px)] left-0 bg-white shadow-lg border border-amber-100 p-2 rounded z-50">
+          <svg class="inline w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          This step is normally assigned to a specific person.
+        </p>
+      </div>
+      <button type="button" class="inline-flex items-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors" onclick="runBulkAssignment()">
+        <svg class="-ml-1 mr-2 h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+        Auto-Assign Missing
+      </button>
+    </div>
+  </div>
+
+  <!-- Assignment Table -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200" style="overflow: visible;">
+    <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center bg-slate-50 gap-4">
+      <div>
+        <h3 class="text-base font-bold text-slate-900">Staff Appraisal Routing</h3>
+        <div class="text-sm text-slate-500">Auto-saves on change</div>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <select id="tableFilterRole" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:ring-emerald-500 min-w-[140px]" onchange="filterRoutingTable()">
+          <option value="">All Roles</option>
+        </select>
+        <select id="tableFilterDept" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:ring-emerald-500 min-w-[160px]" onchange="filterRoutingTable()">
+          <option value="">All Departments</option>
+        </select>
+        <label class="inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="tableFilterUnassigned" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" onchange="filterRoutingTable()">
+          <span class="ml-2 text-sm text-slate-700 font-medium">Unassigned Only</span>
+        </label>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200">
+        <tbody class="bg-white divide-y divide-slate-200">
+          {% regroup appraisals by staff.get_role_display as grouped_appraisals %}
+          {% for role_group in grouped_appraisals %}
+          <tr class="bg-slate-100/80 role-header-row">
+            <td colspan="{{ general_process.steps.count|add:2 }}" class="px-6 py-2.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider sticky left-0 z-10 shadow-[1px_0_0_0_#e2e8f0]">
+              {{ role_group.grouper }}s
+            </td>
+          </tr>
+          {% for appraisal in role_group.list %}
+            {% ifchanged appraisal.active_process.id %}
+            <!-- Dynamic Process Column Headers -->
+            <tr class="bg-slate-50/50 border-b border-slate-200 role-subheader-row">
+              <th scope="col" class="px-6 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider sticky left-0 bg-slate-50/50 z-10 w-64 shadow-[1px_0_0_0_#e2e8f0]">
+                Staff Member
+                <span class="block text-[8px] text-emerald-600 font-bold uppercase mt-0.5">
+                  Process: {{ appraisal.active_process.name }}
+                </span>
+              </th>
+              {% for step in general_process.steps.all %}
+                {% with current_assignment=assignments_map|dict_get:appraisal.id|dict_get:step.step_number %}
+                <th scope="col" class="px-6 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider min-w-[200px]">
+                  {% if current_assignment %}
+                    Step {{ step.step_number }} <span class="text-[9px] text-slate-400 font-normal">({{ current_assignment.step.label }})</span>
+                  {% else %}
+                    Step {{ step.step_number }} <span class="text-[9px] text-slate-400 font-normal">(N/A)</span>
+                  {% endif %}
+                </th>
+                {% endwith %}
+              {% endfor %}
+              <th scope="col" class="px-6 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Process</th>
+            </tr>
+            {% endifchanged %}
+          <tr class="hover:bg-slate-50 appraisal-row" data-appraisal-id="{{ appraisal.id }}" data-role="{{ appraisal.staff.get_role_display|escapejs }}" data-dept="{{ appraisal.staff.department.name|default:'No Dept'|escapejs }}">
+            <td class="px-6 py-4 whitespace-nowrap sticky left-0 bg-white shadow-[1px_0_0_0_#e2e8f0] group-hover:bg-slate-50">
+              <div class="flex flex-col">
+                <span class="text-sm font-bold text-slate-900">{{ appraisal.staff.full_name }}</span>
+                <span class="text-xs text-slate-500">{{ appraisal.staff.department.name|default:"No Dept" }}</span>
+                {% if appraisal.active_process != general_process %}
+                <span class="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 w-fit">
+                  <svg class="w-3 h-3 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  {{ appraisal.active_process.name }}
+                </span>
+                {% endif %}
+              </div>
+            </td>
+            
+            {% for step in general_process.steps.all %}
+              {% with current_assignment=assignments_map|dict_get:appraisal.id|dict_get:step.step_number %}
+              <td class="px-6 py-4 whitespace-nowrap">
+                {% if current_assignment %}
+                  <select class="assignee-select block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm text-slate-700 bg-white {% if not current_assignment.approver_id %}border-red-300 bg-red-50 text-red-900{% endif %}"
+                          data-appraisal-id="{{ appraisal.id }}" data-step-id="{{ current_assignment.step.id }}">
+                    <option value="">-- Unassigned --</option>
+                    {% for user in all_active_users %}
+                      {% if user.id != appraisal.staff.id %}
+                      <option value="{{ user.id }}" {% if current_assignment.approver_id == user.id %}selected{% endif %}>{{ user.full_name }}</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                  {% if appraisal.active_process != general_process %}
+                    <div class="text-[9px] text-amber-600 font-semibold mt-1.5 truncate max-w-[190px]" title="{{ current_assignment.step.label }} ({{ current_assignment.step.get_role_required_display }})">
+                      {{ current_assignment.step.label }} ({{ current_assignment.step.get_role_required_display }})
+                    </div>
+                  {% endif %}
+                {% else %}
+                  <div class="text-xs text-slate-400 italic text-center py-2 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">N/A</div>
+                {% endif %}
+              </td>
+              {% endwith %}
+            {% endfor %}
+            
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <a href="{% url 'hr_admin:set_override_process' appraisal_pk=appraisal.pk %}" class="text-slate-400 hover:text-indigo-600 transition-colors" title="Change Process">
+                <svg class="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none min-w-[320px] max-w-md w-full px-4 sm:px-0"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<script>
+function getCookie(name) {
+  let v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+  return v ? v[2] : null;
+}
+
+function showToast(type, message) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  const isSuccess = type === 'success';
+  
+  toast.className = `w-full bg-white shadow-2xl rounded-xl pointer-events-auto ring-1 ring-black ring-opacity-10 overflow-hidden transition-all duration-300 transform translate-y-0 opacity-100 border-l-4 ${isSuccess ? 'border-emerald-500' : 'border-amber-500'}`;
+  toast.innerHTML = `
+    <div class="p-4">
+      <div class="flex items-start">
+        <div class="flex-shrink-0">
+          ${isSuccess ? 
+            `<svg class="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>` : 
+            `<svg class="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`
+          }
+        </div>
+        <div class="ml-3 w-0 flex-1 pt-0.5">
+          <p class="text-sm font-medium text-slate-900">${message}</p>
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.remove('translate-y-0', 'opacity-100');
+    toast.classList.add('translate-y-2', 'opacity-0');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+function assignApprover(appraisalId, stepId, assigneeId, selectElement) {
+  fetch("{% url 'hr_admin:api_assign_approver' cycle_pk=cycle.pk %}", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+    body: JSON.stringify({ appraisal_id: appraisalId, step_id: stepId, assignee_id: assigneeId || null })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'success') {
+      showToast('success', 'Saved');
+      if (assigneeId) {
+        selectElement.classList.remove('border-red-300', 'bg-red-50', 'text-red-900');
+      } else {
+        selectElement.classList.add('border-red-300', 'bg-red-50', 'text-red-900');
+      }
+    } else {
+      showToast('error', data.message);
+    }
+  });
+}
+
+function runBulkAssignment() {
+  const stepId = document.getElementById('bulkStepId').value;
+  const logic = document.getElementById('bulkLogic').value;
+  const type = document.getElementById('bulkType').value;
+  
+  if (!stepId) return;
+
+  sessionStorage.setItem('bulkStepId', stepId);
+  sessionStorage.setItem('bulkType', type);
+  sessionStorage.setItem('bulkLogic', logic);
+
+  // Get visible appraisal IDs from the table (respecting filter state)
+  const visibleAppraisalIds = [];
+  document.querySelectorAll('tr.appraisal-row').forEach(row => {
+    if (row.style.display !== 'none') {
+      const appId = row.getAttribute('data-appraisal-id');
+      if (appId) {
+        visibleAppraisalIds.push(parseInt(appId));
+      }
+    }
+  });
+
+  fetch("{% url 'hr_admin:api_bulk_assign' cycle_pk=cycle.pk %}", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+    body: JSON.stringify({ 
+      step_id: stepId, 
+      logic: logic,
+      appraisal_ids: visibleAppraisalIds
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'success') {
+      showToast('success', data.message);
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      showToast('error', data.message);
+    }
+  });
+}
+
+const dynamicOptions = [
+  { value: 'supervisor', text: 'Direct Supervisor (Reports To)', roleCode: 'dynamic', icon: '👤' },
+  { value: 'hod', text: 'Department HOD', roleCode: 'dynamic', icon: '🏢' }
+];
+
+const specificOptions = [
+  {% for user in all_active_users %}
+  { value: '{{ user.id }}', text: '{{ user.full_name|escapejs }}', roleCode: '{{ user.role }}', roleLabel: '{{ user.get_role_display|escapejs }}' }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+];
+
+const stepData = {
+  {% for step in general_process.steps.all %}
+  '{{ step.id }}': '{{ step.role_required }}'{% if not forloop.last %},{% endif %}
+  {% endfor %}
+};
+
+// Helper: get initials from a name
+function getInitials(name) {
+  return name.split(' ').map(w => w[0]).join('').substring(0, 2);
+}
+
+// Custom render for person options (used in both bulk and table selects)
+function renderPersonOption(data, escape) {
+  const initials = getInitials(data.text);
+  const role = data.roleCode || 'STAFF';
+  const roleLabel = data.roleLabel || role;
+  return `<div>
+    <span class="ts-avatar role-${escape(role)}">${escape(initials)}</span>
+    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escape(data.text)}</span>
+    <span class="ts-role-badge badge-${escape(role)}">${escape(roleLabel)}</span>
+  </div>`;
+}
+
+function renderPersonItem(data, escape) {
+  const initials = getInitials(data.text);
+  const role = data.roleCode || 'STAFF';
+  return `<div style="display:flex;align-items:center;gap:6px;">
+    <span class="ts-avatar role-${escape(role)}" style="width:18px;height:18px;font-size:0.5rem;">${escape(initials)}</span>
+    <span>${escape(data.text)}</span>
+  </div>`;
+}
+
+// Custom render for dynamic rule options
+function renderDynamicOption(data, escape) {
+  const icon = data.icon || '⚡';
+  return `<div>
+    <span style="font-size:1rem;flex-shrink:0;">${icon}</span>
+    <span style="flex:1;">${escape(data.text)}</span>
+    <span class="ts-role-badge" style="background:#e0f2fe;color:#0369a1;">AUTO</span>
+  </div>`;
+}
+
+function renderDynamicItem(data, escape) {
+  const icon = data.icon || '⚡';
+  return `<div style="display:flex;align-items:center;gap:6px;">
+    <span style="font-size:0.875rem;">${icon}</span>
+    <span>${escape(data.text)}</span>
+  </div>`;
+}
+
+let bulkLogicSelect;
+
+function handleStepOrTypeChange() {
+  document.getElementById('logicToggle').checked = false;
+  toggleLogicDropdown();
+}
+
+function toggleLogicDropdown() {
+  const type = document.getElementById('bulkType').value;
+  const stepId = document.getElementById('bulkStepId').value;
+  const toggleChecked = document.getElementById('logicToggle').checked;
+  
+  const toggleContainer = document.getElementById('logicToggleContainer');
+  const toggleLabel = document.getElementById('logicToggleLabel');
+  const warningMsg = document.getElementById('logicWarning');
+  
+  const roleRequired = stepData[stepId] || '';
+  let options = [];
+  let isDynamic = (type === 'dynamic');
+  
+  if (isDynamic) {
+    const isDynamicStep = (roleRequired === 'SUPERVISOR' || roleRequired === 'HOD');
+    
+    toggleContainer.style.display = isDynamicStep ? 'none' : 'inline-flex';
+    toggleLabel.textContent = 'Force Options';
+    warningMsg.classList.add('hidden');
+    
+    if (isDynamicStep) {
+      options = dynamicOptions;
+    } else {
+      if (toggleChecked) {
+        options = dynamicOptions;
+        warningMsg.classList.remove('hidden');
+      } else {
+        options = [];
+      }
+    }
+  } else {
+    toggleContainer.style.display = 'inline-flex';
+    toggleLabel.textContent = 'Show All Ranks';
+    warningMsg.classList.add('hidden');
+    
+    if (toggleChecked) {
+      options = specificOptions;
+    } else {
+      options = specificOptions.filter(u => u.roleCode === roleRequired);
+    }
+  }
+  
+  // Destroy and recreate the TomSelect to switch renderers
+  if (bulkLogicSelect) {
+    bulkLogicSelect.destroy();
+  }
+
+  const renderOpt = isDynamic ? renderDynamicOption : renderPersonOption;
+  const renderItm = isDynamic ? renderDynamicItem : renderPersonItem;
+
+  bulkLogicSelect = new TomSelect('#bulkLogic', {
+    valueField: 'value',
+    labelField: 'text',
+    searchField: 'text',
+    options: options,
+    render: {
+      option: renderOpt,
+      item: renderItm,
+      no_results: function() { return '<div class="no-results">No matching options found</div>'; }
+    },
+    placeholder: options.length === 0 ? 'No options available' : 'Search or select...',
+    onDropdownOpen: function(dropdown) {
+      let controlRect = this.control.getBoundingClientRect();
+      let mainEl = document.querySelector('main');
+      let maxBottom = window.innerHeight || document.documentElement.clientHeight;
+      if (mainEl) {
+          let mainRect = mainEl.getBoundingClientRect();
+          maxBottom = Math.min(maxBottom, mainRect.bottom);
+      }
+      if (controlRect.bottom + 240 > maxBottom) {
+          dropdown.classList.add('dropup');
+      }
+    },
+    onDropdownClose: function(dropdown) {
+      dropdown.classList.remove('dropup');
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize individual select dropdowns in the table with TomSelect
+  document.querySelectorAll('.assignee-select').forEach(el => {
+    const isUnassigned = !el.value;
+    const wrapper = el.closest('td');
+
+    const ts = new TomSelect(el, {
+      placeholder: '-- Unassigned --',
+      allowEmptyOption: true,
+      render: {
+        option: function(data, escape) {
+          if (!data.value) {
+            return `<div style="color:#94a3b8;font-style:italic;">-- Unassigned --</div>`;
+          }
+          const initials = getInitials(data.text);
+          return `<div>
+            <span class="ts-avatar role-STAFF">${escape(initials)}</span>
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escape(data.text)}</span>
+          </div>`;
+        },
+        item: function(data, escape) {
+          if (!data.value) {
+            return `<div style="color:#94a3b8;font-style:italic;">-- Unassigned --</div>`;
+          }
+          const initials = getInitials(data.text);
+          return `<div style="display:flex;align-items:center;gap:5px;">
+            <span class="ts-avatar role-STAFF" style="width:18px;height:18px;font-size:0.5rem;">${escape(initials)}</span>
+            <span>${escape(data.text)}</span>
+          </div>`;
+        },
+        no_results: function() { return '<div class="no-results">No matching staff found</div>'; }
+      },
+      onChange: function(value) {
+        const appraisalId = el.getAttribute('data-appraisal-id');
+        const stepId = el.getAttribute('data-step-id');
+        assignApprover(appraisalId, stepId, value, el);
+        
+        // Toggle unassigned styling
+        const tsWrapper = el.closest('.ts-wrapper') || el.parentElement.querySelector('.ts-wrapper');
+        if (tsWrapper) {
+          if (value) {
+            tsWrapper.classList.remove('ts-unassigned');
+          } else {
+            tsWrapper.classList.add('ts-unassigned');
+          }
+        }
+        
+        // Update unassigned filter if active
+        const filterUnassigned = document.getElementById('tableFilterUnassigned').checked;
+        if (filterUnassigned) {
+            filterRoutingTable();
+        }
+      },
+      onDropdownOpen: function(dropdown) {
+        let controlRect = this.control.getBoundingClientRect();
+        let mainEl = document.querySelector('main');
+        let maxBottom = window.innerHeight || document.documentElement.clientHeight;
+        if (mainEl) {
+            let mainRect = mainEl.getBoundingClientRect();
+            maxBottom = Math.min(maxBottom, mainRect.bottom);
+        }
+        if (controlRect.bottom + 220 > maxBottom) {
+            dropdown.classList.add('dropup');
+        }
+      },
+      onDropdownClose: function(dropdown) {
+        dropdown.classList.remove('dropup');
+      }
+    });
+
+    // Apply compact class and initial unassigned state
+    const tsWrapper = el.closest('.ts-wrapper') || wrapper.querySelector('.ts-wrapper');
+    if (tsWrapper) {
+      tsWrapper.classList.add('ts-compact');
+      if (isUnassigned) {
+        tsWrapper.classList.add('ts-unassigned');
+      }
+    }
+  });
+
+  // Restore session state
+  const savedStepId = sessionStorage.getItem('bulkStepId');
+  const savedType = sessionStorage.getItem('bulkType');
+  const savedLogic = sessionStorage.getItem('bulkLogic');
+  
+  if (savedStepId) {
+    const stepEl = document.getElementById('bulkStepId');
+    if (stepEl.querySelector(`option[value="${savedStepId}"]`)) {
+      stepEl.value = savedStepId;
+    }
+  }
+  
+  if (savedType) {
+    const typeEl = document.getElementById('bulkType');
+    if (typeEl.querySelector(`option[value="${savedType}"]`)) {
+      typeEl.value = savedType;
+    }
+  }
+  
+  // Build the logic dropdown based on current selections
+  toggleLogicDropdown();
+  
+  if (savedLogic) {
+    bulkLogicSelect.setValue(savedLogic);
+  }
+
+  // Initialize filters
+  initTableFilters();
+
+  // Restore table filters state
+  const savedTableRole = sessionStorage.getItem('tableFilterRole');
+  const savedTableDept = sessionStorage.getItem('tableFilterDept');
+  const savedTableUnassigned = sessionStorage.getItem('tableFilterUnassigned');
+  
+  if (savedTableRole) {
+    const roleSelect = document.getElementById('tableFilterRole');
+    if (roleSelect.querySelector(`option[value="${savedTableRole}"]`)) {
+      roleSelect.value = savedTableRole;
+    }
+  }
+  if (savedTableDept) {
+    const deptSelect = document.getElementById('tableFilterDept');
+    if (deptSelect.querySelector(`option[value="${savedTableDept}"]`)) {
+      deptSelect.value = savedTableDept;
+    }
+  }
+  if (savedTableUnassigned === 'true') {
+    document.getElementById('tableFilterUnassigned').checked = true;
+  }
+  
+  // Run the filter to apply restored state
+  filterRoutingTable();
+});
+
+function initTableFilters() {
+    const roleSet = new Set();
+    const deptSet = new Set();
+    
+    document.querySelectorAll('tr.appraisal-row').forEach(row => {
+        const role = row.getAttribute('data-role');
+        const dept = row.getAttribute('data-dept');
+        if (role) roleSet.add(role);
+        if (dept) deptSet.add(dept);
+    });
+    
+    const roleSelect = document.getElementById('tableFilterRole');
+    Array.from(roleSet).sort().forEach(role => {
+        roleSelect.add(new Option(role, role));
+    });
+    
+    const deptSelect = document.getElementById('tableFilterDept');
+    Array.from(deptSet).sort().forEach(dept => {
+        deptSelect.add(new Option(dept, dept));
+    });
+}
+
+function filterRoutingTable() {
+    const roleFilter = document.getElementById('tableFilterRole').value;
+    const deptFilter = document.getElementById('tableFilterDept').value;
+    const unassignedOnly = document.getElementById('tableFilterUnassigned').checked;
+    
+    // Save filter states to sessionStorage
+    sessionStorage.setItem('tableFilterRole', roleFilter);
+    sessionStorage.setItem('tableFilterDept', deptFilter);
+    sessionStorage.setItem('tableFilterUnassigned', unassignedOnly ? 'true' : 'false');
+    
+    document.querySelectorAll('tr.role-header-row').forEach(headerRow => {
+        let hasVisibleRowsInGroup = false;
+        let currentRow = headerRow.nextElementSibling;
+        
+        let currentSubheader = null;
+        let hasVisibleRowsInSubgroup = false;
+        
+        while (currentRow && !currentRow.classList.contains('role-header-row')) {
+            if (currentRow.classList.contains('role-subheader-row')) {
+                if (currentSubheader) {
+                    currentSubheader.style.display = hasVisibleRowsInSubgroup ? '' : 'none';
+                }
+                currentSubheader = currentRow;
+                hasVisibleRowsInSubgroup = false;
+            } else if (currentRow.classList.contains('appraisal-row')) {
+                let show = true;
+                const role = currentRow.getAttribute('data-role');
+                const dept = currentRow.getAttribute('data-dept');
+                
+                if (roleFilter && role !== roleFilter) show = false;
+                if (deptFilter && dept !== deptFilter) show = false;
+                
+                if (show && unassignedOnly) {
+                    const selects = currentRow.querySelectorAll('select.assignee-select');
+                    let hasUnassigned = false;
+                    selects.forEach(s => {
+                        if (!s.value) hasUnassigned = true;
+                    });
+                    if (!hasUnassigned) show = false;
+                }
+                
+                currentRow.style.display = show ? '' : 'none';
+                if (show) {
+                    hasVisibleRowsInSubgroup = true;
+                    hasVisibleRowsInGroup = true;
+                }
+            }
+            currentRow = currentRow.nextElementSibling;
+        }
+        
+        if (currentSubheader) {
+            currentSubheader.style.display = hasVisibleRowsInSubgroup ? '' : 'none';
+        }
+        
+        headerRow.style.display = hasVisibleRowsInGroup ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

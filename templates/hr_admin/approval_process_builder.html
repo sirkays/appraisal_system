@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% block title %}Approval Process Builder — {{ cycle.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex items-center gap-4">
+    <a href="{% url 'hr_admin:approval_process_list' cycle_pk=cycle.pk %}" class="p-2 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+    </a>
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">{% if process %}Edit{% else %}Create{% endif %} Approval Process</h1>
+      <p class="mt-1 text-sm text-slate-500">Define the ordered chain of approval steps for <strong>{{ cycle.name }}</strong></p>
+    </div>
+  </div>
+
+  <div class="flex flex-col lg:flex-row gap-6">
+    <!-- Left Sidebar: Details & Legend -->
+    <div class="w-full lg:w-80 space-y-6 flex-shrink-0">
+      <!-- Process Details Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="text-base font-bold text-slate-900">Process Details</h3>
+        </div>
+        <div class="p-5 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Process Name</label>
+            <input type="text" id="processName" 
+                   class="block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                   value="{{ process.name|default:'' }}"
+                   placeholder="e.g. Standard 4-Step Review">
+          </div>
+          <div class="flex items-start">
+            <div class="flex items-center h-5">
+              <input type="checkbox" id="isGeneral" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border border-slate-300 rounded" {% if process.is_general %}checked{% endif %}>
+            </div>
+            <div class="ml-3 text-sm">
+              <label for="isGeneral" class="font-medium text-slate-700">Set as General (Default) Process</label>
+              <p class="text-slate-500 text-xs mt-1">Applies to all staff unless overridden.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Role Legend Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="text-base font-bold text-slate-900">Available Roles</h3>
+        </div>
+        <div class="p-5 space-y-2">
+          {% for code, label in role_choices %}
+          <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 w-full mb-1">
+            {{ label }}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Main: Step Builder -->
+    <div class="flex-1 space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <h3 class="text-base font-bold text-slate-900">Approval Steps</h3>
+          <button type="button" class="inline-flex items-center px-3 py-1.5 border border-slate-300 shadow-sm text-xs font-medium rounded text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors" onclick="addStep()">
+            + Add Step
+          </button>
+        </div>
+        <div class="p-6">
+          <div id="stepsContainer" class="space-y-4">
+            <!-- Steps rendered by JS -->
+          </div>
+          <div id="emptyState" class="text-center py-12" style="display:none;">
+            <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-slate-900">No steps added</h3>
+            <p class="mt-1 text-sm text-slate-500">Click '+ Add Step' to build your approval chain.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Process Flow Preview -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" id="flowPreview" style="display:none;">
+        <div class="px-6 py-4 border-b border-slate-100">
+          <h3 class="text-base font-bold text-slate-900">Flow Preview</h3>
+        </div>
+        <div class="p-6 overflow-x-auto">
+          <div id="flowContainer" class="flex items-center flex-nowrap gap-3 min-w-max"></div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+        <a href="{% url 'hr_admin:approval_process_list' cycle_pk=cycle.pk %}" class="inline-flex items-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors">Cancel</a>
+        <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors" onclick="saveProcess()">
+          <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+          Save Process
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-3 min-w-[320px]"></div>
+
+<script>
+const ROLE_CHOICES = [
+  {% for code, label in role_choices %}
+  { value: "{{ code }}", label: "{{ label }}" }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+];
+
+let steps = {{ steps_json|safe }};
+
+function renderSteps() {
+  const container = document.getElementById('stepsContainer');
+  const emptyState = document.getElementById('emptyState');
+  const flowPreview = document.getElementById('flowPreview');
+
+  if (steps.length === 0) {
+    container.innerHTML = '';
+    emptyState.style.display = 'block';
+    flowPreview.style.display = 'none';
+    return;
+  }
+  emptyState.style.display = 'none';
+  flowPreview.style.display = 'block';
+
+  container.innerHTML = steps.map((step, idx) => `
+    <div class="bg-white border border-slate-200 rounded-lg p-5 relative group hover:border-emerald-300 transition-colors shadow-sm">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold text-sm flex items-center justify-center flex-shrink-0">
+          ${idx + 1}
+        </div>
+        <input type="text" class="flex-1 bg-transparent border-0 border-b-2 border-slate-300 px-2 py-1 text-lg font-bold text-slate-900 focus:ring-0 focus:border-emerald-500 transition-colors"
+               value="${escHtml(step.label)}"
+               placeholder="Step Label (e.g. Supervisor Review)"
+               onchange="updateStep(${idx}, 'label', this.value)">
+        <button class="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded text-xs font-medium transition-colors" onclick="removeStep(${idx})">
+          Remove
+        </button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Role Required</label>
+          <select class="block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                  onchange="updateStep(${idx}, 'role_required', this.value)">
+            ${ROLE_CHOICES.map(r => `<option value="${r.value}" ${step.role_required === r.value ? 'selected' : ''}>${r.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="flex items-end pb-2">
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border border-slate-300 rounded"
+                   ${step.can_score ? 'checked' : ''}
+                   onchange="updateStep(${idx}, 'can_score', this.checked)">
+            <span class="ml-2 text-sm font-medium text-slate-700">Reviewer can enter/edit scores</span>
+          </label>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Approve Button Label</label>
+          <input type="text" class="block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                 value="${escHtml(step.action_label_approve)}"
+                 placeholder="Approve & Forward"
+                 onchange="updateStep(${idx}, 'action_label_approve', this.value)">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Return Button Label</label>
+          <input type="text" class="block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                 value="${escHtml(step.action_label_return)}"
+                 placeholder="Return for Revision"
+                 onchange="updateStep(${idx}, 'action_label_return', this.value)">
+        </div>
+      </div>
+    </div>
+    ${idx < steps.length - 1 ? `
+      <div class="flex justify-center -my-2 relative z-10">
+        <div class="bg-white px-2 text-slate-300">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+        </div>
+      </div>
+    ` : ''}
+  `).join('');
+
+  updateFlowPreview();
+}
+
+function updateFlowPreview() {
+  const container = document.getElementById('flowContainer');
+  if (!container) return;
+  container.innerHTML = steps.map((step, idx) => `
+    ${idx > 0 ? '<svg class="w-5 h-5 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>' : ''}
+    <div class="flex flex-col items-center bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 min-w-[140px] flex-shrink-0">
+      <span class="text-[10px] font-bold text-emerald-600 uppercase">Step ${idx + 1}</span>
+      <span class="text-sm font-semibold text-slate-800 mt-1">${escHtml(step.label) || '(untitled)'}</span>
+      <span class="text-[10px] text-slate-500 mt-1">${ROLE_CHOICES.find(r=>r.value===step.role_required)?.label || ''}</span>
+    </div>
+  `).join('');
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function addStep() {
+  steps.push({
+    step_number: steps.length + 1,
+    label: '',
+    role_required: 'SUPERVISOR',
+    action_label_approve: 'Approve & Forward',
+    action_label_return: 'Return for Revision',
+    can_score: true,
+  });
+  renderSteps();
+}
+
+function updateStep(idx, field, value) {
+  steps[idx][field] = value;
+  // Re-render flow preview silently
+  updateFlowPreview();
+}
+
+function removeStep(idx) {
+  steps.splice(idx, 1);
+  steps.forEach((s, i) => s.step_number = i + 1);
+  renderSteps();
+}
+
+function saveProcess() {
+  const name = document.getElementById('processName').value.trim();
+  const isGeneral = document.getElementById('isGeneral').checked;
+
+  if (!name) { showToast('error', 'Process name is required.'); return; }
+  if (steps.length === 0) { showToast('error', 'At least one step is required.'); return; }
+  for (const s of steps) {
+    if (!s.label.trim()) { showToast('error', `Step ${s.step_number} must have a label.`); return; }
+  }
+
+  const url = "{% if process %}{% url 'hr_admin:approval_process_edit' cycle_pk=cycle.pk process_pk=process.pk %}{% else %}{% url 'hr_admin:approval_process_create' cycle_pk=cycle.pk %}{% endif %}";
+
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+    body: JSON.stringify({ name, is_general: isGeneral, steps }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'success') {
+      showToast('success', data.message);
+      setTimeout(() => window.location.href = "{% url 'hr_admin:approval_process_list' cycle_pk=cycle.pk %}", 1000);
+    } else {
+      showToast('error', data.message);
+    }
+  })
+  .catch(() => showToast('error', 'Save failed. Please try again.'));
+}
+
+function getCookie(name) {
+  let v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+  return v ? v[2] : null;
+}
+
+function showToast(type, message) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  const isSuccess = type === 'success';
+  
+  toast.className = `w-full bg-white shadow-2xl rounded-xl pointer-events-auto ring-1 ring-black ring-opacity-10 overflow-hidden transition-all duration-300 transform translate-y-0 opacity-100 border-l-4 ${isSuccess ? 'border-emerald-500' : 'border-red-500'}`;
+  toast.innerHTML = `
+    <div class="p-4">
+      <div class="flex items-start">
+        <div class="flex-shrink-0">
+          ${isSuccess ? 
+            `<svg class="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>` : 
+            `<svg class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+          }
+        </div>
+        <div class="ml-3 w-0 flex-1 pt-0.5">
+          <p class="text-sm font-medium text-slate-900">${message}</p>
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.remove('translate-y-0', 'opacity-100');
+    toast.classList.add('translate-y-2', 'opacity-0');
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+// Initial render
+renderSteps();
+</script>
+{% endblock %}

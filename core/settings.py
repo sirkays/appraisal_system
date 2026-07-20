@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     # Custom apps
     'accounts',
     'departments',
+    'branches',
     'appraisals',
     'notifications',
     'hr_admin',
@@ -81,6 +82,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'notifications.context_processors.unread_notifications',
+                'accounts.context_processors.active_cycles',
             ],
         },
     },

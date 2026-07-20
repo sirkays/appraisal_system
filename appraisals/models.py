@@ -3,7 +3,7 @@ Models for the Performance Appraisals app.
 
 Defines the complete appraisal workflow for the State Internal Revenue Service,
 including appraisal cycles, KPI and competency frameworks, scoring, and
-multi-level review (self → supervisor → HOD).
+fully dynamic multi-step approval processes (general per-cycle and per-staff overrides).
 """
 
 from django.db import models
@@ -63,6 +63,14 @@ class AppraisalCycle(models.Model):
         choices=SCORING_SCALE_CHOICES,
         default=5,
     )
+    branch = models.ForeignKey(
+        'branches.Branch',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='cycles',
+        help_text="Branch this cycle is scoped to. All targeting is filtered by this branch.",
+    )
     target_departments = models.ManyToManyField(
         'departments.Department',
         blank=True,
@@ -102,6 +110,187 @@ class AppraisalCycle(models.Model):
         """Return True if the cycle is currently active."""
         return self.status == self.ACTIVE
 
+    @property
+    def general_approval_process(self):
+        """Return the cycle's designated general (default) approval process."""
+        return self.approval_processes.filter(is_general=True).first()
+
+
+# ============================================================
+# APPROVAL WORKFLOW MODELS
+# ============================================================
+
+class ApprovalProcess(models.Model):
+    """
+    Defines a named, ordered chain of approval steps.
+
+    An ApprovalProcess can be:
+    - **General** (is_general=True): the default process for all staff in a cycle.
+    - **Override**: assigned to a specific staff member's appraisal to replace
+      the general process (e.g., for HODs or Directors whose chain differs).
+
+    A single cycle can have many ApprovalProcess records but only ONE general one.
+    """
+
+    cycle = models.ForeignKey(
+        AppraisalCycle,
+        on_delete=models.CASCADE,
+        related_name='approval_processes',
+    )
+    name = models.CharField(
+        max_length=200,
+        help_text="Descriptive name, e.g. 'Standard 4-Step Review' or 'HOD Override Process'."
+    )
+    is_general = models.BooleanField(
+        default=False,
+        help_text="If True, this is the default process applied to all staff in this cycle."
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_approval_processes',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_general', 'name']
+        verbose_name = 'Approval Process'
+        verbose_name_plural = 'Approval Processes'
+
+    def __str__(self):
+        flag = " [General]" if self.is_general else ""
+        return f"{self.name}{flag} — {self.cycle.name}"
+
+    @property
+    def step_count(self):
+        return self.steps.count()
+
+
+class ApprovalStep(models.Model):
+    """
+    A single step in an ApprovalProcess.
+
+    Each step specifies which role is required to action it and a human-readable
+    label. Steps are ordered by step_number within a process.
+    """
+
+    SUPERVISOR = 'SUPERVISOR'
+    HOD = 'HOD'
+    DIRECTORATE = 'DIRECTORATE'
+    HR_ADMIN = 'HR_ADMIN'
+
+    ROLE_CHOICES = [
+        (SUPERVISOR, 'Supervisor'),
+        (HOD, 'Head of Department'),
+        (DIRECTORATE, 'Director/Executive'),
+        (HR_ADMIN, 'HR Administrator'),
+    ]
+
+    process = models.ForeignKey(
+        ApprovalProcess,
+        on_delete=models.CASCADE,
+        related_name='steps',
+    )
+    step_number = models.PositiveIntegerField(
+        help_text="Ordering within the process. Step 1 is actioned first."
+    )
+    label = models.CharField(
+        max_length=200,
+        help_text="Display label, e.g. 'Supervisor Review', 'HOD Moderation'."
+    )
+    role_required = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        help_text="Which role is allowed to action this step."
+    )
+    action_label_approve = models.CharField(
+        max_length=100,
+        default="Approve & Forward",
+        help_text="Button label for the approve action."
+    )
+    action_label_return = models.CharField(
+        max_length=100,
+        default="Return for Revision",
+        help_text="Button label for the return action."
+    )
+    can_score = models.BooleanField(
+        default=True,
+        help_text="If True, the approver at this step can enter/edit scores."
+    )
+
+    class Meta:
+        ordering = ['step_number']
+        unique_together = [('process', 'step_number')]
+        verbose_name = 'Approval Step'
+        verbose_name_plural = 'Approval Steps'
+
+    def __str__(self):
+        return f"Step {self.step_number}: {self.label} ({self.process.name})"
+
+
+class AppraisalApprovalAssignment(models.Model):
+    """
+    Links a specific approver user to an ApprovalStep for one specific Appraisal.
+
+    When a cycle is activated (or the approval process is assigned), one
+    AppraisalApprovalAssignment record is created per step per appraisal.
+    HR Admin can then set the specific `approver` user for each assignment.
+    """
+
+    PENDING = 'PENDING'
+    APPROVED = 'APPROVED'
+    RETURNED = 'RETURNED'
+    SKIPPED = 'SKIPPED'
+
+    STATUS_CHOICES = [
+        (PENDING, 'Pending'),
+        (APPROVED, 'Approved'),
+        (RETURNED, 'Returned'),
+        (SKIPPED, 'Skipped'),
+    ]
+
+    appraisal = models.ForeignKey(
+        'Appraisal',
+        on_delete=models.CASCADE,
+        related_name='approval_assignments',
+    )
+    step = models.ForeignKey(
+        ApprovalStep,
+        on_delete=models.CASCADE,
+        related_name='assignments',
+    )
+    approver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approval_assignments',
+        help_text="The specific user assigned to action this step."
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default=PENDING,
+    )
+    comments = models.TextField(blank=True)
+    actioned_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['step__step_number']
+        unique_together = [('appraisal', 'step')]
+        verbose_name = 'Approval Assignment'
+        verbose_name_plural = 'Approval Assignments'
+
+    def __str__(self):
+        approver_name = self.approver.get_full_name() if self.approver else "Unassigned"
+        return f"{self.appraisal} — Step {self.step.step_number}: {approver_name} [{self.status}]"
+
+
+# ============================================================
+# KPI & COMPETENCY FRAMEWORK
+# ============================================================
 
 class KPICategory(models.Model):
     """
@@ -139,7 +328,7 @@ class KPIItem(models.Model):
     """
     An individual KPI metric within a category.
 
-    Staff will score themselves against each item, and supervisors will
+    Staff will score themselves against each item, and approvers will
     provide their own scores during the review stage.
     """
 
@@ -240,7 +429,7 @@ class NarrativeField(models.Model):
     description = models.TextField(blank=True)
     is_supervisor_field = models.BooleanField(
         default=False,
-        help_text="If True, this field is filled by the supervisor instead of the staff member."
+        help_text="If True, this field is filled by the first-step approver instead of the staff member."
     )
     order = models.PositiveIntegerField(default=0)
 
@@ -253,34 +442,280 @@ class NarrativeField(models.Model):
         return self.name
 
 
+# ============================================================
+# NEW: UNIFIED FORM BUILDER MODELS
+# ============================================================
+
+class FormSection(models.Model):
+    """
+    A named group of FormFields within an appraisal cycle.
+
+    Sections appear in order on the appraisal form.
+    Each section carries a weight (% of total score) used when
+    computing overall scores. Set weight=0 for pure narrative sections.
+    """
+
+    cycle = models.ForeignKey(
+        AppraisalCycle,
+        on_delete=models.CASCADE,
+        related_name='form_sections',
+    )
+    name = models.CharField(max_length=200, help_text="e.g. 'Section A: KPIs & Core Duties'")
+    description = models.TextField(blank=True, help_text="Optional instructions shown above the section.")
+    section_weight = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0,
+        help_text="Percentage weight of this section in the overall score (0-100). Set to 0 for non-scored sections."
+    )
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = 'Form Section'
+        verbose_name_plural = 'Form Sections'
+
+    def __str__(self):
+        return f"{self.name} ({self.cycle.name})"
+
+
+class FormField(models.Model):
+    """
+    A single configurable field within a FormSection.
+
+    Supports 5 field types and can be assigned to any role
+    (appraisee or any reviewer in the approval process).
+    Score fields carry configurable min/max bounds.
+    Select fields store their options as JSON.
+    Mode-B fields (reviewer_can_score / reviewer_can_comment) allow
+    a reviewer to annotate an appraisee's own field response.
+    """
+
+    # ── Field type constants ──────────────────────────────────
+    NARRATIVE     = 'NARRATIVE'      # Open text area
+    SCORE         = 'SCORE'          # Numeric input with min/max
+    SCORE_COMMENT = 'SCORE_COMMENT'  # Numeric input + text comment
+    SINGLE_SELECT = 'SINGLE_SELECT'  # Radio buttons (one choice)
+    MULTI_SELECT  = 'MULTI_SELECT'   # Checkboxes (multiple choices)
+
+    FIELD_TYPE_CHOICES = [
+        (NARRATIVE,     'Narrative (Text)'),
+        (SCORE,         'Score (Numeric)'),
+        (SCORE_COMMENT, 'Score + Comment'),
+        (SINGLE_SELECT, 'Single Select'),
+        (MULTI_SELECT,  'Multiple Select'),
+    ]
+
+    # ── Who fills this field ──────────────────────────────────
+    APPRAISEE   = 'APPRAISEE'
+    SUPERVISOR  = 'SUPERVISOR'
+    HOD         = 'HOD'
+    DIRECTORATE = 'DIRECTORATE'
+    HR_ADMIN    = 'HR_ADMIN'
+
+    FILLED_BY_CHOICES = [
+        (APPRAISEE,   'Appraisee (Staff)'),
+        (SUPERVISOR,  'Supervisor'),
+        (HOD,         'Head of Department'),
+        (DIRECTORATE, 'Director/Executive'),
+        (HR_ADMIN,    'HR Administrator'),
+    ]
+
+    section = models.ForeignKey(
+        FormSection,
+        on_delete=models.CASCADE,
+        related_name='fields',
+    )
+    label = models.CharField(max_length=300, help_text="Display name, e.g. 'Revenue Target Achieved'")
+    description = models.TextField(blank=True, help_text="Help text shown beneath the field.")
+    field_type = models.CharField(
+        max_length=20,
+        choices=FIELD_TYPE_CHOICES,
+        default=NARRATIVE,
+    )
+    filled_by = models.CharField(
+        max_length=20,
+        choices=FILLED_BY_CHOICES,
+        default=APPRAISEE,
+        help_text="Which role is responsible for filling this field.",
+    )
+
+    # Score bounds (used for SCORE and SCORE_COMMENT types)
+    max_score = models.DecimalField(
+        max_digits=7, decimal_places=2, default=10,
+        help_text="Maximum achievable score for this field.",
+    )
+    min_score = models.DecimalField(
+        max_digits=7, decimal_places=2, default=0,
+        help_text="Minimum score for this field (usually 0).",
+    )
+
+    # Options list for SELECT types (stored as JSON array of strings)
+    options = models.JSONField(
+        default=list, blank=True,
+        help_text="List of option strings for SINGLE_SELECT or MULTI_SELECT fields.",
+    )
+
+    # Mode B — reviewer annotates an appraisee field
+    reviewer_can_score = models.BooleanField(
+        default=False,
+        help_text="If True and filled_by=APPRAISEE, the designated reviewer can also give a score on this field."
+    )
+    reviewer_score_role = models.CharField(
+        max_length=20,
+        choices=FILLED_BY_CHOICES,
+        blank=True,
+        help_text="Which reviewer role provides the score (Mode B).",
+    )
+    reviewer_score_max = models.DecimalField(
+        max_digits=7, decimal_places=2, default=10, blank=True,
+        help_text="Maximum score the reviewer can give on this field (Mode B).",
+    )
+    reviewer_can_comment = models.BooleanField(
+        default=False,
+        help_text="If True and filled_by=APPRAISEE, the designated reviewer can add a comment on this field."
+    )
+    reviewer_comment_role = models.CharField(
+        max_length=20,
+        choices=FILLED_BY_CHOICES,
+        blank=True,
+        help_text="Which reviewer role provides the comment (Mode B).",
+    )
+
+    is_required = models.BooleanField(
+        default=True,
+        help_text="Whether this field must be filled before the form can be submitted.",
+    )
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = 'Form Field'
+        verbose_name_plural = 'Form Fields'
+
+    def __str__(self):
+        return f"{self.label} [{self.get_field_type_display()}] — {self.section.name}"
+
+    @property
+    def is_scored(self):
+        """True if this field produces a numeric score."""
+        return self.field_type in (self.SCORE, self.SCORE_COMMENT)
+
+    @property
+    def is_select(self):
+        return self.field_type in (self.SINGLE_SELECT, self.MULTI_SELECT)
+
+
+class FormFieldResponse(models.Model):
+    """
+    Stores a single response to a single FormField for one Appraisal.
+
+    The (appraisal, field, responded_by, response_type) combination is unique,
+    which allows an appraisee AND a reviewer to independently respond to the
+    same field (Mode B: reviewer scores/comments on an appraisee field).
+    """
+
+    PRIMARY          = 'PRIMARY'          # Normal field fill (appraisee or appraiser)
+    REVIEWER_SCORE   = 'REVIEWER_SCORE'   # Mode B: reviewer's score on appraisee field
+    REVIEWER_COMMENT = 'REVIEWER_COMMENT' # Mode B: reviewer's comment on appraisee field
+
+    RESPONSE_TYPE_CHOICES = [
+        (PRIMARY,          'Primary Response'),
+        (REVIEWER_SCORE,   'Reviewer Score'),
+        (REVIEWER_COMMENT, 'Reviewer Comment'),
+    ]
+
+    appraisal = models.ForeignKey(
+        'Appraisal',
+        on_delete=models.CASCADE,
+        related_name='form_responses',
+    )
+    field = models.ForeignKey(
+        FormField,
+        on_delete=models.CASCADE,
+        related_name='responses',
+    )
+    responded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='form_field_responses',
+    )
+    response_type = models.CharField(
+        max_length=20,
+        choices=RESPONSE_TYPE_CHOICES,
+        default=PRIMARY,
+    )
+
+    # Populated based on field_type
+    text_response = models.TextField(
+        blank=True,
+        help_text="Response for NARRATIVE fields or the comment part of SCORE_COMMENT.",
+    )
+    score = models.DecimalField(
+        max_digits=7, decimal_places=2, null=True, blank=True,
+        help_text="Numeric score for SCORE, SCORE_COMMENT, or reviewer Mode B score.",
+    )
+    selected_options = models.JSONField(
+        default=list, blank=True,
+        help_text="Selected option(s) for SINGLE_SELECT and MULTI_SELECT fields.",
+    )
+    evidence_file = models.FileField(
+        upload_to='evidence/form_fields/',
+        null=True, blank=True,
+    )
+    responded_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('appraisal', 'field', 'responded_by', 'response_type')]
+        ordering = ['field__order']
+        verbose_name = 'Form Field Response'
+        verbose_name_plural = 'Form Field Responses'
+
+    def __str__(self):
+        user = self.responded_by.get_full_name() if self.responded_by else 'Unknown'
+        return f"{user} → {self.field.label} [{self.response_type}]"
+
+
+# ============================================================
+# APPRAISAL RECORD
+# ============================================================
+
 class Appraisal(models.Model):
     """
     A single staff member's appraisal within a given cycle.
 
-    Tracks the full workflow from self-assessment through supervisor
-    and HOD review, including all aggregate scores.
+    Tracks the full dynamic workflow from self-assessment through
+    configurable multi-step approval, including all aggregate scores.
+
+    The approval chain is driven by `override_process` (if set) or the
+    cycle's general ApprovalProcess. `current_step_number` tracks which
+    step is currently pending action.
     """
 
     # --- Status choices ---
     NOT_STARTED = 'NOT_STARTED'
     DRAFT = 'DRAFT'
     SUBMITTED = 'SUBMITTED'
-    UNDER_REVIEW = 'UNDER_REVIEW'
+    AWAITING_STEP_REVIEW = 'AWAITING_STEP_REVIEW'
     RETURNED_TO_STAFF = 'RETURNED_TO_STAFF'
-    REVIEWED = 'REVIEWED'
-    RETURNED_TO_SUPERVISOR = 'RETURNED_TO_SUPERVISOR'
+    RETURNED_TO_REVIEWER = 'RETURNED_TO_REVIEWER'
     APPROVED = 'APPROVED'
+    STAFF_ACKNOWLEDGED = 'STAFF_ACKNOWLEDGED'
     ARCHIVED = 'ARCHIVED'
+
+    # Legacy aliases (kept for backwards compatibility with old data)
+    UNDER_REVIEW = 'AWAITING_STEP_REVIEW'
+    REVIEWED = 'APPROVED'
+    RETURNED_TO_SUPERVISOR = 'RETURNED_TO_REVIEWER'
 
     STATUS_CHOICES = [
         (NOT_STARTED, 'Not Started'),
         (DRAFT, 'Draft'),
-        (SUBMITTED, 'Submitted'),
-        (UNDER_REVIEW, 'Under Review'),
+        (SUBMITTED, 'Submitted — Awaiting Step 1'),
+        (AWAITING_STEP_REVIEW, 'Awaiting Reviewer Action'),
         (RETURNED_TO_STAFF, 'Returned to Staff'),
-        (REVIEWED, 'Reviewed'),
-        (RETURNED_TO_SUPERVISOR, 'Returned to Supervisor'),
-        (APPROVED, 'Approved'),
+        (RETURNED_TO_REVIEWER, 'Returned to Previous Reviewer'),
+        (APPROVED, 'Fully Approved'),
+        (STAFF_ACKNOWLEDGED, 'Staff Acknowledged'),
         (ARCHIVED, 'Archived'),
     ]
 
@@ -299,7 +734,22 @@ class Appraisal(models.Model):
         choices=STATUS_CHOICES,
         default=NOT_STARTED,
     )
-    self_submitted_at = models.DateTimeField(null=True, blank=True)
+
+    # --- Dynamic approval workflow ---
+    override_process = models.ForeignKey(
+        ApprovalProcess,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='override_appraisals',
+        help_text="If set, overrides the cycle's general approval process for this staff member."
+    )
+    current_step_number = models.PositiveIntegerField(
+        default=0,
+        help_text="0 = not yet submitted. 1+ = the step currently awaiting action."
+    )
+
+    # --- Legacy supervisor FK (kept for compatibility, now also used for step 1 auto-assign) ---
     supervisor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -307,34 +757,34 @@ class Appraisal(models.Model):
         blank=True,
         related_name='supervised_appraisals',
     )
+
+    # --- Timestamps ---
+    self_submitted_at = models.DateTimeField(null=True, blank=True)
     supervisor_reviewed_at = models.DateTimeField(null=True, blank=True)
     hod_reviewed_at = models.DateTimeField(null=True, blank=True)
+    staff_acknowledged_at = models.DateTimeField(null=True, blank=True)
+
+    # --- Scores ---
     overall_self_score = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        null=True,
-        blank=True,
+        max_digits=5, decimal_places=2, null=True, blank=True,
     )
     overall_supervisor_score = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        null=True,
-        blank=True,
+        max_digits=5, decimal_places=2, null=True, blank=True,
     )
     final_score = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        null=True,
-        blank=True,
+        max_digits=5, decimal_places=2, null=True, blank=True,
     )
+
+    # --- Return notes ---
     supervisor_return_notes = models.TextField(
         blank=True,
-        help_text="Reason provided by the supervisor when returning the appraisal to the staff."
+        help_text="Reason provided when returning the appraisal to the staff."
     )
     hod_return_notes = models.TextField(
         blank=True,
-        help_text="Reason provided by the HOD when returning the appraisal to the supervisor."
+        help_text="Reason provided by the HOD when returning the appraisal."
     )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -347,29 +797,72 @@ class Appraisal(models.Model):
     def __str__(self):
         return f"{self.staff.get_full_name()} - {self.cycle.name}"
 
+    # ------------------------------------------------------------------
+    # Approval workflow helpers
+    # ------------------------------------------------------------------
+
+    @property
+    def active_process(self):
+        """Return the override process if set, else the cycle's general process."""
+        if self.override_process_id:
+            return self.override_process
+        return self.cycle.general_approval_process
+
+    @property
+    def current_assignment(self):
+        """Return the PENDING AppraisalApprovalAssignment for the current step."""
+        if self.current_step_number == 0:
+            return None
+        return self.approval_assignments.filter(
+            step__step_number=self.current_step_number,
+            status=AppraisalApprovalAssignment.PENDING,
+        ).select_related('step', 'approver').first()
+
+    @property
+    def total_steps(self):
+        """Total number of steps in the active process."""
+        process = self.active_process
+        if process:
+            return process.steps.count()
+        return 0
+
+    @property
+    def progress_percent(self):
+        """Percentage of approval steps completed (for progress bars)."""
+        if self.status in [self.APPROVED, self.STAFF_ACKNOWLEDGED, self.ARCHIVED]:
+            return 100
+        if self.total_steps == 0 or self.current_step_number == 0:
+            return 0
+        return int(((self.current_step_number - 1) / self.total_steps) * 100)
+
     @property
     def has_supervisor_draft(self):
-        """Returns True if the supervisor has started reviewing but hasn't submitted yet."""
-        if self.status != self.SUBMITTED:
+        """Returns True if the current step's approver has started reviewing."""
+        if self.status not in [self.SUBMITTED, self.AWAITING_STEP_REVIEW]:
             return False
-            
-        # Check if there's any supervisor score
         if self.kpi_scores.filter(supervisor_score__isnull=False).exists():
             return True
         if self.competency_scores.filter(supervisor_score__isnull=False).exists():
             return True
-            
-        # Check if supervisor review has any text content
         if hasattr(self, 'supervisor_review'):
             if self.supervisor_review.overall_comments or self.supervisor_review.recommendation:
                 return True
-                
         return False
 
+    def get_assignment_for_step(self, step_number):
+        """Return the assignment for a specific step number."""
+        return self.approval_assignments.filter(
+            step__step_number=step_number
+        ).select_related('step', 'approver').first()
+
+
+# ============================================================
+# SCORES
+# ============================================================
 
 class KPIScore(models.Model):
     """
-    Records the self and supervisor scores for a single KPI item
+    Records the self and reviewer scores for a single KPI item
     within an appraisal, along with target/achievement narratives.
     """
 
@@ -391,16 +884,10 @@ class KPIScore(models.Model):
         help_text='What was achieved against the target.',
     )
     self_score = models.DecimalField(
-        max_digits=4,
-        decimal_places=2,
-        null=True,
-        blank=True,
+        max_digits=4, decimal_places=2, null=True, blank=True,
     )
     supervisor_score = models.DecimalField(
-        max_digits=4,
-        decimal_places=2,
-        null=True,
-        blank=True,
+        max_digits=4, decimal_places=2, null=True, blank=True,
     )
     staff_comment = models.TextField(blank=True)
     supervisor_comment = models.TextField(blank=True)
@@ -422,7 +909,7 @@ class KPIScore(models.Model):
 
 class CompetencyScore(models.Model):
     """
-    Records the self and supervisor scores for a single competency item
+    Records the self and reviewer scores for a single competency item
     within an appraisal.
     """
 
@@ -436,16 +923,10 @@ class CompetencyScore(models.Model):
         on_delete=models.CASCADE,
     )
     self_score = models.DecimalField(
-        max_digits=4,
-        decimal_places=2,
-        null=True,
-        blank=True,
+        max_digits=4, decimal_places=2, null=True, blank=True,
     )
     supervisor_score = models.DecimalField(
-        max_digits=4,
-        decimal_places=2,
-        null=True,
-        blank=True,
+        max_digits=4, decimal_places=2, null=True, blank=True,
     )
     staff_comment = models.TextField(blank=True)
     supervisor_comment = models.TextField(blank=True)
@@ -467,11 +948,11 @@ class CompetencyScore(models.Model):
 
 class SupervisorReview(models.Model):
     """
-    The supervisor's qualitative review of a staff appraisal, including
-    an overall recommendation and narrative feedback.
+    The first-step approver's qualitative review of a staff appraisal,
+    including an overall recommendation and narrative feedback.
+    Kept for backward compatibility and as a convenience record for step-1 data.
     """
 
-    # --- Recommendation choices ---
     EXCELLENT = 'EXCELLENT'
     VERY_GOOD = 'VERY_GOOD'
     GOOD = 'GOOD'
@@ -517,11 +998,10 @@ class SupervisorReview(models.Model):
 
 class HODReview(models.Model):
     """
-    Head of Department review — the final approval or return step
-    in the appraisal workflow.
+    Head of Department review record (kept for backward compatibility).
+    In the new dynamic workflow, HOD actions are tracked via AppraisalApprovalAssignment.
     """
 
-    # --- Action choices ---
     APPROVED = 'APPROVED'
     RETURNED = 'RETURNED'
 
@@ -545,6 +1025,7 @@ class HODReview(models.Model):
     action = models.CharField(
         max_length=20,
         choices=ACTION_CHOICES,
+        blank=True,
     )
     reviewed_at = models.DateTimeField(auto_now=True)
 
@@ -553,12 +1034,12 @@ class HODReview(models.Model):
         verbose_name_plural = 'HOD Reviews'
 
     def __str__(self):
-        return f"HOD Review for {self.appraisal.staff.full_name}"
+        return f"HOD Review for {self.appraisal}"
 
 
 class NarrativeResponse(models.Model):
     """
-    Staff or supervisor response to a NarrativeField.
+    Staff or reviewer response to a NarrativeField.
     """
     appraisal = models.ForeignKey(
         Appraisal,
@@ -582,4 +1063,4 @@ class NarrativeResponse(models.Model):
         verbose_name_plural = 'Narrative Responses'
 
     def __str__(self):
-        return f"Response to {self.field.name} for {self.appraisal.staff.full_name}"
+        return f"Response to {self.field.name} for {self.appraisal.staff.get_full_name()}"

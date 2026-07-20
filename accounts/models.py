@@ -31,12 +31,14 @@ class CustomUser(AbstractUser):
     STAFF = "STAFF"
     SUPERVISOR = "SUPERVISOR"
     HOD = "HOD"
+    DIRECTORATE = "DIRECTORATE"
     HR_ADMIN = "HR_ADMIN"
 
     ROLE_CHOICES = [
         (STAFF, "Staff"),
         (SUPERVISOR, "Supervisor"),
         (HOD, "Head of Department"),
+        (DIRECTORATE, "Director/Executive"),
         (HR_ADMIN, "HR Administrator"),
     ]
 
@@ -113,6 +115,11 @@ class CustomUser(AbstractUser):
     def is_hod(self) -> bool:
         """Return ``True`` if this user holds the HOD role."""
         return self.role == self.HOD
+
+    @property
+    def is_directorate(self) -> bool:
+        """Return ``True`` if this user holds the DIRECTORATE role."""
+        return self.role == self.DIRECTORATE
 
     @property
     def is_hr_admin(self) -> bool:

@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Appraisal Result — {{ appraisal.staff.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+
+    <!-- Header -->
+    <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <a href="{% url 'accounts:dashboard_redirect' %}" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-2xl font-extrabold text-slate-900 dark:text-slate-100">Appraisal Result</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ appraisal.cycle.name }}</p>
+            </div>
+        </div>
+
+        {% if can_acknowledge %}
+        <form method="post" action="{% url 'appraisals:acknowledge_appraisal' pk=appraisal.pk %}">
+            {% csrf_token %}
+            <button type="submit"
+                    onclick="return confirm('Acknowledge this appraisal result?')"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-sm
+                           bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700
+                           shadow-lg shadow-emerald-500/25 transition">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+                Acknowledge Result
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- Scores Summary Card -->
+    <div class="mb-8 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600 rounded-2xl p-6 text-white shadow-xl shadow-emerald-500/20">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div class="text-center">
+                <p class="text-emerald-100 text-xs font-semibold uppercase tracking-wider mb-1">Status</p>
+                <p class="text-xl font-extrabold">{{ appraisal.get_status_display }}</p>
+            </div>
+            {% if appraisal.final_score %}
+            <div class="text-center">
+                <p class="text-emerald-100 text-xs font-semibold uppercase tracking-wider mb-1">Final Score</p>
+                <p class="text-4xl font-extrabold">{{ appraisal.final_score }}%</p>
+            </div>
+            {% endif %}
+            {% if appraisal.overall_supervisor_score %}
+            <div class="text-center">
+                <p class="text-emerald-100 text-xs font-semibold uppercase tracking-wider mb-1">Reviewer Score</p>
+                <p class="text-2xl font-extrabold">{{ appraisal.overall_supervisor_score }}%</p>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if appraisal.staff_acknowledged_at %}
+        <div class="mt-4 pt-4 border-t border-white/20 text-center">
+            <p class="text-emerald-100 text-xs">Acknowledged on {{ appraisal.staff_acknowledged_at|date:"d M Y, H:i" }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Approval chain -->
+    {% if all_assignments %}
+    <div class="mb-8 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm">
+        <h2 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Approval History</h2>
+        <div class="space-y-3">
+            {% for assignment in all_assignments %}
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+                    {% if assignment.status == 'APPROVED' %}bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300
+                    {% elif assignment.status == 'RETURNED' %}bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300
+                    {% else %}bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400{% endif %}">
+                    {{ assignment.step.step_number }}
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ assignment.step.label }}</span>
+                        <span class="px-2 py-0.5 rounded-full text-xs font-bold
+                            {% if assignment.status == 'APPROVED' %}bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300
+                            {% elif assignment.status == 'RETURNED' %}bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300
+                            {% elif assignment.status == 'PENDING' %}bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300
+                            {% else %}bg-slate-100 dark:bg-slate-800 text-slate-500{% endif %}">
+                            {{ assignment.get_status_display }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                        {% if assignment.approver %}{{ assignment.approver.get_full_name }}{% endif %}
+                        {% if assignment.actioned_at %}&middot; {{ assignment.actioned_at|date:"d M Y, H:i" }}{% endif %}
+                    </p>
+                    {% if assignment.comments %}
+                    <p class="mt-1 text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">{{ assignment.comments }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- All Form Sections & Responses -->
+    {% for sec_data in result_sections %}
+    {% with section=sec_data.section fields=sec_data.fields %}
+    <div class="mb-6 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <div>
+                <h2 class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ section.name }}</h2>
+                {% if section.description %}<p class="text-xs text-slate-500 mt-0.5">{{ section.description }}</p>{% endif %}
+            </div>
+            {% if section.section_weight > 0 %}
+            <span class="text-xs font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 rounded-full">
+                Weight: {{ section.section_weight }}%
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="px-6 py-5 space-y-6">
+            {% for item in fields %}
+            {% with field=item.field response=item.response %}
+            <div class="border-b border-slate-100 dark:border-slate-800 pb-5 last:border-0 last:pb-0">
+                <div class="flex items-start justify-between mb-2">
+                    <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ field.label }}</h3>
+                    <div class="flex items-center gap-2 ml-4 flex-shrink-0">
+                        {% if field.field_type == FIELD_TYPE.SCORE or field.field_type == FIELD_TYPE.SCORE_COMMENT %}
+                        <span class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 px-2 py-0.5 rounded-lg">Max: {{ field.max_score }}</span>
+                        {% endif %}
+                        <span class="text-xs px-2 py-0.5 rounded-lg
+                            {% if field.filled_by == 'APPRAISEE' %}bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400
+                            {% elif field.filled_by == 'SUPERVISOR' %}bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400
+                            {% elif field.filled_by == 'HOD' %}bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400
+                            {% elif field.filled_by == 'DIRECTORATE' %}bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400
+                            {% else %}bg-slate-100 dark:bg-slate-800 text-slate-500{% endif %}">
+                            {{ field.get_filled_by_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Primary response -->
+                {% if response %}
+                    {% if field.field_type == FIELD_TYPE.NARRATIVE %}
+                        <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap min-h-[40px]">{{ response.text_response|default:"— No response —" }}</div>
+                    {% elif field.field_type == FIELD_TYPE.SCORE %}
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-extrabold text-slate-900 dark:text-slate-100">{{ response.score|default:"—" }}</span>
+                            <span class="text-slate-400 text-sm">/ {{ field.max_score }}</span>
+                            {% if response.score and field.max_score %}
+                            <div class="flex-1 ml-3 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden max-w-[200px]">
+                                <div class="h-2 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full"
+                                     style="width: {% widthratio response.score field.max_score 100 %}%"></div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    {% elif field.field_type == FIELD_TYPE.SCORE_COMMENT %}
+                        <div class="flex items-baseline gap-2 mb-3">
+                            <span class="text-3xl font-extrabold text-slate-900 dark:text-slate-100">{{ response.score|default:"—" }}</span>
+                            <span class="text-slate-400 text-sm">/ {{ field.max_score }}</span>
+                        </div>
+                        {% if response.text_response %}
+                        <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300">{{ response.text_response }}</div>
+                        {% endif %}
+                    {% elif field.field_type == FIELD_TYPE.SINGLE_SELECT or field.field_type == FIELD_TYPE.MULTI_SELECT %}
+                        <div class="flex flex-wrap gap-2">
+                            {% for opt in response.selected_options %}
+                                <span class="px-3 py-1 text-sm rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">{{ opt }}</span>
+                            {% empty %}
+                                <span class="text-sm text-slate-400">— No selection —</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-400">
+                        Not yet filled.
+                    </div>
+                {% endif %}
+
+                <!-- Mode B: reviewer annotations (scores/comments ON this field) -->
+                {% for mb in item.mode_b_responses %}
+                <div class="mt-3 pl-4 border-l-2
+                    {% if mb.response_type == RESPONSE_TYPE.REVIEWER_SCORE %}border-blue-400{% else %}border-amber-400{% endif %}">
+                    <p class="text-xs font-bold uppercase tracking-wide
+                        {% if mb.response_type == RESPONSE_TYPE.REVIEWER_SCORE %}text-blue-600 dark:text-blue-400{% else %}text-amber-600 dark:text-amber-400{% endif %}">
+                        {% if mb.response_type == RESPONSE_TYPE.REVIEWER_SCORE %}Reviewer Score{% else %}Reviewer Comment{% endif %}
+                        — {{ mb.responded_by.get_full_name }} ({{ mb.responded_by.get_role_display }})
+                    </p>
+                    {% if mb.response_type == RESPONSE_TYPE.REVIEWER_SCORE %}
+                        <span class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ mb.score|default:"—" }}</span>
+                    {% else %}
+                        <p class="text-sm text-slate-700 dark:text-slate-300 mt-1">{{ mb.text_response|default:"—" }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+
+</div>
+{% endblock %}

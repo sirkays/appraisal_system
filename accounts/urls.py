@@ -11,5 +11,7 @@ urlpatterns = [
     path('staff/dashboard/', views.staff_dashboard, name='staff_dashboard'),
     path('supervisor/dashboard/', views.supervisor_dashboard, name='supervisor_dashboard'),
     path('hod/dashboard/', views.hod_dashboard, name='hod_dashboard'),
+    path('directorate/dashboard/', views.directorate_dashboard, name='directorate_dashboard'),
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('switch-cycle/', views.switch_cycle, name='switch_cycle'),
 ]

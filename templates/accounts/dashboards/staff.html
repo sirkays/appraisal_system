@@ -14,18 +14,6 @@
                 {{ user.department.name|default:"No Department" }} &nbsp;·&nbsp; {{ user.designation|default:"Staff" }} &nbsp;·&nbsp; {{ user.staff_id }}
             </p>
         </div>
-
-        <!-- Active Cycle Badge -->
-        <div class="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl
-                    bg-emerald-50 dark:bg-emerald-950/40
-                    border border-emerald-200 dark:border-emerald-800/50
-                    text-emerald-700 dark:text-emerald-400 shrink-0">
-            <span class="relative flex h-2.5 w-2.5">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
-            <span class="text-sm font-semibold">Active: {{ active_cycle.name|default:"No Active Cycle" }}</span>
-        </div>
     </div>
 
     <!-- ══════════ QUICK STATS ROW ══════════ -->
@@ -150,28 +138,70 @@
                     </div>
                 </div>
 
-                <!-- Timeline Steps -->
-                <div class="flex items-center gap-2 mb-6">
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-6 h-6 rounded-full {% if appraisal.status != 'NOT_STARTED' %}bg-emerald-500 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-500{% endif %} flex items-center justify-center text-xs font-bold">1</div>
-                        <span class="text-xs text-slate-400 dark:text-slate-500">Self-Score</span>
+                <!-- Timeline Steps — Dynamic from active approval process -->
+                <div class="mb-6">
+                    {% if approval_steps %}
+                    <div class="flex items-center gap-1 flex-wrap">
+                        <!-- Step 0: Self-Assessment (always first) -->
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-6 h-6 rounded-full {% if appraisal.status != 'NOT_STARTED' %}bg-emerald-500 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-500{% endif %} flex items-center justify-center text-xs font-bold shrink-0">1</div>
+                            <span class="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">Self-Score</span>
+                        </div>
+                        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700 min-w-[12px]"></div>
+                        {% for step in approval_steps %}
+                        <div class="flex items-center gap-1.5">
+                            {% if appraisal.status in 'AWAITING_STEP_REVIEW,SUBMITTED' %}
+                                {% if appraisal.current_step_number > step.step_number %}
+                                <div class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0">{{ forloop.counter|add:1 }}</div>
+                                {% elif appraisal.current_step_number == step.step_number %}
+                                <div class="relative w-6 h-6 shrink-0">
+                                    <div class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-40"></div>
+                                    <div class="relative w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">{{ forloop.counter|add:1 }}</div>
+                                </div>
+                                {% else %}
+                                <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center text-xs font-bold shrink-0">{{ forloop.counter|add:1 }}</div>
+                                {% endif %}
+                            {% elif appraisal.status == 'APPROVED' or appraisal.status == 'STAFF_ACKNOWLEDGED' or appraisal.status == 'ARCHIVED' %}
+                                <div class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0">{{ forloop.counter|add:1 }}</div>
+                            {% else %}
+                                <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center text-xs font-bold shrink-0">{{ forloop.counter|add:1 }}</div>
+                            {% endif %}
+                            <span class="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">{{ step.label }}</span>
+                        </div>
+                        {% if not forloop.last %}
+                        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700 min-w-[12px]"></div>
+                        {% endif %}
+                        {% endfor %}
+                        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700 min-w-[12px]"></div>
+                        <!-- Final: Approved -->
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-6 h-6 rounded-full {% if appraisal.status == 'APPROVED' or appraisal.status == 'STAFF_ACKNOWLEDGED' or appraisal.status == 'ARCHIVED' %}bg-emerald-500 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-500{% endif %} flex items-center justify-center text-xs font-bold shrink-0">{{ approval_steps|length|add:2 }}</div>
+                            <span class="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">Approved</span>
+                        </div>
                     </div>
-                    <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-6 h-6 rounded-full {% if appraisal.status == 'UNDER_REVIEW' or appraisal.status == 'REVIEWED' or appraisal.status == 'APPROVED' %}bg-emerald-500 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-500{% endif %} flex items-center justify-center text-xs font-bold">2</div>
-                        <span class="text-xs text-slate-400 dark:text-slate-500">Supervisor</span>
+                    {% else %}
+                    <!-- Fallback if no process configured yet -->
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-6 h-6 rounded-full {% if appraisal.status != 'NOT_STARTED' %}bg-emerald-500 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-500{% endif %} flex items-center justify-center text-xs font-bold">1</div>
+                            <span class="text-xs text-slate-400 dark:text-slate-500">Self-Score</span>
+                        </div>
+                        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center text-xs font-bold">2</div>
+                            <span class="text-xs text-slate-400 dark:text-slate-500">Review</span>
+                        </div>
+                        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-6 h-6 rounded-full {% if appraisal.status == 'APPROVED' %}bg-emerald-500 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-500{% endif %} flex items-center justify-center text-xs font-bold">3</div>
+                            <span class="text-xs text-slate-400 dark:text-slate-500">Approved</span>
+                        </div>
                     </div>
-                    <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-6 h-6 rounded-full {% if appraisal.status == 'REVIEWED' or appraisal.status == 'APPROVED' %}bg-emerald-500 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-500{% endif %} flex items-center justify-center text-xs font-bold">3</div>
-                        <span class="text-xs text-slate-400 dark:text-slate-500">HOD Review</span>
-                    </div>
-                    <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-6 h-6 rounded-full {% if appraisal.status == 'APPROVED' %}bg-emerald-500 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-500{% endif %} flex items-center justify-center text-xs font-bold">4</div>
-                        <span class="text-xs text-slate-400 dark:text-slate-500">Approved</span>
-                    </div>
+                    {% endif %}
                 </div>
+
+
+
 
                 <div class="flex items-center justify-between pt-5 border-t border-slate-100 dark:border-slate-800/60">
                     <div class="flex items-center gap-2">
@@ -266,17 +296,31 @@
             </div>
 
             <!-- Quick Info Card -->
+            {% if active_cycle %}
             <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 shadow-md shadow-emerald-500/20">
                 <p class="text-xs font-semibold text-emerald-200 uppercase tracking-wide mb-1">Cycle Deadline</p>
-                <p class="text-2xl font-extrabold text-white">Sept 30</p>
-                <p class="text-xs text-emerald-205 mt-1">Submit before the deadline to avoid penalties</p>
+                <p class="text-2xl font-extrabold text-white">{{ active_cycle.end_date|date:"M d, Y" }}</p>
+                <p class="text-xs text-emerald-200 mt-1">Submit before the deadline to avoid penalties</p>
                 <div class="mt-4 pt-4 border-t border-emerald-500/40">
-                    <div class="flex items-center justify-between text-xs font-medium text-emerald-250">
+                    <div class="flex items-center justify-between text-xs font-medium text-emerald-200">
                         <span>Days Remaining</span>
-                        <span class="text-white font-bold text-sm">~89 days</span>
+                        <span class="text-white font-bold text-sm">
+                            {% if days_remaining is not None %}
+                                {% if days_remaining > 0 %}
+                                    ~{{ days_remaining }} days
+                                {% elif days_remaining == 0 %}
+                                    Ends today
+                                {% else %}
+                                    Ended
+                                {% endif %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </span>
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
 
