@@ -9,6 +9,9 @@ from .models import (
     AppraisalCycle,
     ApprovalProcess,
     ApprovalStep,
+    FormField,
+    FormFieldResponse,
+    FormSection,
 )
 
 
@@ -204,3 +207,37 @@ class ReturnReasonVisibilityTests(TestCase):
         self.client.login(username="hod", password="pass12345")
         response = self.client.get(reverse("appraisals:step_review", args=[self.appraisal.id]))
         self.assertNotContains(response, "This appraisal is not currently in your action queue.")
+
+    def test_staff_evidence_file_shows_on_reviewer_page(self):
+        section = FormSection.objects.create(
+            cycle=self.cycle,
+            name="Staff Evidence",
+            order=1,
+        )
+        field = FormField.objects.create(
+            section=section,
+            label="Supporting Document",
+            field_type=FormField.NARRATIVE,
+            filled_by=FormField.APPRAISEE,
+            order=1,
+        )
+        FormFieldResponse.objects.create(
+            appraisal=self.appraisal,
+            field=field,
+            responded_by=self.staff,
+            response_type=FormFieldResponse.PRIMARY,
+            text_response="Attached my supporting document.",
+            evidence_file="evidence/form_fields/supporting_document.docx",
+        )
+        self.appraisal.status = Appraisal.SUBMITTED
+        self.appraisal.current_step_number = 1
+        self.appraisal.save(update_fields=["status", "current_step_number"])
+        self.supervisor_assignment.status = AppraisalApprovalAssignment.PENDING
+        self.supervisor_assignment.save(update_fields=["status"])
+
+        self.client.login(username="supervisor", password="pass12345")
+        response = self.client.get(reverse("appraisals:step_review", args=[self.appraisal.id]))
+
+        self.assertContains(response, "Attached my supporting document.")
+        self.assertContains(response, "View attached evidence")
+        self.assertContains(response, "/media/evidence/form_fields/supporting_document.docx")

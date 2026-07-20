@@ -144,6 +144,16 @@
                                     {% endfor %}
                                 </div>
                             {% endif %}
+
+                            {% if response.evidence_file %}
+                            <a href="{{ response.evidence_file.url }}" target="_blank"
+                               class="mt-3 inline-flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.586-6.586a4 4 0 00-5.657-5.657l-6.586 6.586a6 6 0 108.486 8.486L20.5 13"/>
+                                </svg>
+                                View attached evidence
+                            </a>
+                            {% endif %}
                         {% else %}
                             <div class="mt-1 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-400">
                                 Not yet filled by the appraisee.
