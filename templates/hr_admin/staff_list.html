@@ -17,57 +17,85 @@
         </a>
     </div>
 
-    <form method="get" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+    <form method="get" class="bg-white/90 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800/70 p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Branch</label>
-                <select name="branch" class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+                <h2 class="text-sm font-bold text-slate-900 dark:text-white">Filter staff</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Narrow the directory by location, cycle, role, and appraisal progress.</p>
+            </div>
+            <span class="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                {{ staff|length }} result{{ staff|length|pluralize }}
+            </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-3">
+            <div class="group rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 px-3 py-2.5 focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-500/10 transition">
+                <label class="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Branch</label>
+                <div class="relative">
+                <select name="branch" class="w-full appearance-none bg-transparent border-0 p-0 pr-7 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:ring-0 truncate">
                     <option value="">All branches</option>
                     {% for branch in branches %}
                     <option value="{{ branch.id }}" {% if branch.id|stringformat:"s" == selected_branch_id %}selected{% endif %}>{{ branch.name }}</option>
                     {% endfor %}
                 </select>
+                <svg class="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
             </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Department</label>
-                <select name="department" class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+            <div class="group rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 px-3 py-2.5 focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-500/10 transition">
+                <label class="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Department</label>
+                <div class="relative">
+                <select name="department" class="w-full appearance-none bg-transparent border-0 p-0 pr-7 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:ring-0 truncate">
                     <option value="">All departments</option>
                     {% for department in departments %}
                     <option value="{{ department.id }}" {% if department.id|stringformat:"s" == selected_department_id %}selected{% endif %}>{{ department.name }}</option>
                     {% endfor %}
                 </select>
+                <svg class="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
             </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Appraisal Cycle</label>
-                <select name="cycle" class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+            <div class="group rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 px-3 py-2.5 focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-500/10 transition">
+                <label class="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Appraisal Cycle</label>
+                <div class="relative">
+                <select name="cycle" class="w-full appearance-none bg-transparent border-0 p-0 pr-7 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:ring-0 truncate">
                     <option value="">Active cycle</option>
                     {% for cycle in cycles %}
                     <option value="{{ cycle.id }}" {% if cycle.id|stringformat:"s" == selected_cycle_id %}selected{% endif %}>{{ cycle.name }}</option>
                     {% endfor %}
                 </select>
+                <svg class="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
             </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Appraisal Status</label>
-                <select name="status" class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+            <div class="group rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 px-3 py-2.5 focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-500/10 transition">
+                <label class="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Appraisal Status</label>
+                <div class="relative">
+                <select name="status" class="w-full appearance-none bg-transparent border-0 p-0 pr-7 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:ring-0 truncate">
                     <option value="">All statuses</option>
                     <option value="NO_RECORD" {% if selected_status == 'NO_RECORD' %}selected{% endif %}>No appraisal record</option>
                     {% for value,label in appraisal_status_choices %}
                     <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
+                <svg class="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
             </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Role</label>
-                <select name="role" class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+            <div class="group rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 px-3 py-2.5 focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-500/10 transition">
+                <label class="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Role</label>
+                <div class="relative">
+                <select name="role" class="w-full appearance-none bg-transparent border-0 p-0 pr-7 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:ring-0 truncate">
                     <option value="">All roles</option>
                     {% for value,label in role_choices %}
                     <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
+                <svg class="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
             </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Search</label>
-                <input type="search" name="q" value="{{ search_q }}" placeholder="Name, email, ID..." class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+            <div class="group rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 px-3 py-2.5 focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-500/10 transition">
+                <label class="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Search</label>
+                <div class="relative">
+                <input type="search" name="q" value="{{ search_q }}" placeholder="Name, email, ID..." class="w-full bg-transparent border-0 p-0 pl-6 text-sm font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:ring-0">
+                <svg class="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m1.1-5.4a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"/></svg>
+                </div>
             </div>
         </div>
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -75,8 +103,11 @@
                 Showing {{ staff|length }} staff{% if selected_cycle %} for {{ selected_cycle.name }}{% endif %}.
             </p>
             <div class="flex items-center gap-2">
-                <a href="{% url 'hr_admin:staff_list' %}" class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Reset</a>
-                <button type="submit" class="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition">Apply Filters</button>
+                <a href="{% url 'hr_admin:staff_list' %}" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Reset</a>
+                <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 transition">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 01.8 1.6L14 13.67V19a1 1 0 01-1.45.9l-4-2A1 1 0 018 17v-3.33L3.2 4.6A1 1 0 013 4z"/></svg>
+                    Apply Filters
+                </button>
             </div>
         </div>
     </form>
