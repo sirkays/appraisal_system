@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Appraisal Report — {{ appraisal.staff.get_full_name }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #0f172a; margin: 32px; line-height: 1.45; }
+    .header { border-bottom: 3px solid #10b981; padding-bottom: 16px; margin-bottom: 24px; }
+    .kicker { color: #059669; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { margin: 4px 0 6px; font-size: 28px; }
+    h2 { font-size: 16px; margin: 0; }
+    h3 { font-size: 14px; margin: 0 0 6px; }
+    .muted { color: #64748b; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
+    .card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; background: #fff; }
+    .label { color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+    .value { margin-top: 4px; font-weight: 700; font-size: 16px; }
+    .section { border: 1px solid #e2e8f0; border-radius: 14px; margin: 18px 0; overflow: hidden; break-inside: avoid; }
+    .section-head { background: #f8fafc; padding: 14px 16px; border-bottom: 1px solid #e2e8f0; }
+    .section-body { padding: 14px 16px; }
+    .field { padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+    .field:last-child { border-bottom: none; }
+    .answer { margin-top: 8px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; white-space: pre-wrap; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #ecfdf5; color: #047857; font-size: 11px; font-weight: 700; }
+    .score { font-size: 22px; font-weight: 800; }
+    .history-item { display: grid; grid-template-columns: 28px 1fr; gap: 10px; margin: 12px 0; }
+    .step { width: 28px; height: 28px; border-radius: 999px; background: #d1fae5; color: #047857; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; }
+    .comment { margin-top: 6px; padding: 8px 10px; background: #f8fafc; border-left: 3px solid #10b981; white-space: pre-wrap; }
+    .annotation { margin-top: 10px; padding-left: 10px; border-left: 3px solid #60a5fa; }
+    .footer { margin-top: 28px; padding-top: 12px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 11px; }
+    @media print { body { margin: 18mm; } .section { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="kicker">Appraisal Report</div>
+    <h1>{{ appraisal.staff.get_full_name }}</h1>
+    <div class="muted">{{ appraisal.staff.staff_id }}{% if appraisal.staff.department %} · {{ appraisal.staff.department.name }}{% endif %}{% if appraisal.staff.designation %} · {{ appraisal.staff.designation }}{% endif %}</div>
+    <div class="muted">Cycle: {{ appraisal.cycle.name }}</div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="label">Status</div><div class="value">{{ appraisal.get_status_display }}</div></div>
+    <div class="card"><div class="label">Self Score</div><div class="value">{{ appraisal.overall_self_score|default:"—" }}</div></div>
+    <div class="card"><div class="label">Final Score</div><div class="value">{{ appraisal.final_score|default:"—" }}</div></div>
+  </div>
+
+  {% if all_assignments %}
+  <div class="section">
+    <div class="section-head">
+      <h2>Approval History</h2>
+      <div class="muted">Reviewer actions and comments</div>
+    </div>
+    <div class="section-body">
+      {% for assignment in all_assignments %}
+      <div class="history-item">
+        <div class="step">{{ assignment.step.step_number }}</div>
+        <div>
+          <strong>{{ assignment.step.label }}</strong> <span class="pill">{{ assignment.get_status_display }}</span>
+          <div class="muted">{% if assignment.approver %}{{ assignment.approver.get_full_name }}{% else %}Unassigned{% endif %}{% if assignment.actioned_at %} · {{ assignment.actioned_at|date:"d M Y, H:i" }}{% endif %}</div>
+          {% if assignment.comments %}<div class="comment">{{ assignment.comments }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% for sec_data in result_sections %}
+  {% with section=sec_data.section fields=sec_data.fields %}
+  <div class="section">
+    <div class="section-head">
+      <h2>{{ section.name }}{% if section.section_weight > 0 %} <span class="pill">Weight: {{ section.section_weight }}%</span>{% endif %}</h2>
+      {% if section.description %}<div class="muted">{{ section.description }}</div>{% endif %}
+    </div>
+    <div class="section-body">
+      {% for item in fields %}
+      {% with field=item.field response=item.response %}
+      <div class="field">
+        <h3>{{ field.label }}</h3>
+        <div class="muted">Filled by: {{ field.get_filled_by_display }}{% if field.max_score %} · Max: {{ field.max_score }}{% endif %}</div>
+        {% if response %}
+          {% if field.field_type == FIELD_TYPE.NARRATIVE %}
+            <div class="answer">{{ response.text_response|default:"— No response —" }}</div>
+          {% elif field.field_type == FIELD_TYPE.SCORE %}
+            <div class="answer"><span class="score">{{ response.score|default:"—" }}</span> / {{ field.max_score }}</div>
+          {% elif field.field_type == FIELD_TYPE.SCORE_COMMENT %}
+            <div class="answer"><span class="score">{{ response.score|default:"—" }}</span> / {{ field.max_score }}{% if response.text_response %}<br>{{ response.text_response }}{% endif %}</div>
+          {% elif field.field_type == FIELD_TYPE.SINGLE_SELECT or field.field_type == FIELD_TYPE.MULTI_SELECT %}
+            <div class="answer">{% for opt in response.selected_options %}{{ opt }}{% if not forloop.last %}, {% endif %}{% empty %}— No selection —{% endfor %}</div>
+          {% else %}
+            <div class="answer">{{ response.text_response|default:"—" }}</div>
+          {% endif %}
+          {% if response.evidence_file %}<div class="muted">Evidence file: {{ response.evidence_file.url }}</div>{% endif %}
+        {% else %}
+          <div class="answer">Not yet filled.</div>
+        {% endif %}
+
+        {% for mb in item.mode_b_responses %}
+        <div class="annotation">
+          <div class="label">{% if mb.response_type == RESPONSE_TYPE.REVIEWER_SCORE %}Reviewer Score{% else %}Reviewer Comment{% endif %} — {{ mb.responded_by.get_full_name }}{% if mb.responded_by %} ({{ mb.responded_by.get_role_display }}){% endif %}</div>
+          {% if mb.response_type == RESPONSE_TYPE.REVIEWER_SCORE %}
+            <div><strong>{{ mb.score|default:"—" }}</strong></div>
+          {% else %}
+            <div>{{ mb.text_response|default:"—" }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endwith %}
+  {% endfor %}
+
+  <div class="footer">
+    Downloaded by {{ request.user.get_full_name|default:request.user.username }} on {% now "d M Y, H:i" %}.
+  </div>
+</body>
+</html>

@@ -291,6 +291,32 @@ class ReturnReasonVisibilityTests(TestCase):
         self.assertContains(response, populated_section.name)
         self.assertContains(response, "Revenue Target Achieved")
 
+    def test_authorized_user_can_download_appraisal_result(self):
+        self.supervisor_assignment.comments = "Approved with strong KPI evidence."
+        self.supervisor_assignment.save(update_fields=["comments"])
+
+        self.client.login(username="hod", password="pass12345")
+        response = self.client.get(reverse("appraisals:download_appraisal_result", args=[self.appraisal.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/html; charset=utf-8")
+        self.assertIn("attachment;", response["Content-Disposition"])
+        self.assertContains(response, "Appraisal Report")
+        self.assertContains(response, "Approved with strong KPI evidence.")
+
+    def test_unauthorized_user_cannot_download_appraisal_result(self):
+        outsider = CustomUser.objects.create_user(
+            username="outsider",
+            password="pass12345",
+            staff_id="OUT-001",
+            role=CustomUser.STAFF,
+        )
+
+        self.client.login(username="outsider", password="pass12345")
+        response = self.client.get(reverse("appraisals:download_appraisal_result", args=[self.appraisal.id]))
+
+        self.assertEqual(response.status_code, 302)
+
 
 class MyAppraisalsStatsTests(TestCase):
     def test_summary_counts_are_scoped_to_logged_in_user(self):

@@ -20,6 +20,16 @@
             </div>
         </div>
 
+        <div class="flex flex-wrap items-center gap-2">
+        <a href="{% url 'appraisals:download_appraisal_result' pk=appraisal.pk %}"
+           class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 font-bold text-sm
+                  bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800
+                  shadow-sm transition">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/>
+            </svg>
+            Download
+        </a>
         {% if can_acknowledge %}
         <form method="post" action="{% url 'appraisals:acknowledge_appraisal' pk=appraisal.pk %}">
             {% csrf_token %}
@@ -35,6 +45,7 @@
             </button>
         </form>
         {% endif %}
+        </div>
     </div>
 
     <!-- Scores Summary Card -->

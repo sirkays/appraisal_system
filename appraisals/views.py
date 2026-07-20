@@ -11,7 +11,9 @@ Each appraisal uses either the cycle's general process or a per-staff override p
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from django.utils.text import slugify
 from django.utils import timezone
 from decimal import Decimal, InvalidOperation
 from accounts.models import CustomUser
@@ -26,6 +28,74 @@ from .models import (
 # ============================================================
 # HELPER FUNCTIONS
 # ============================================================
+
+def _user_can_view_appraisal(request, appraisal):
+    """Return whether the current user may view/download this appraisal."""
+    return (
+        appraisal.staff == request.user or
+        request.user.role == CustomUser.HR_ADMIN or
+        appraisal.approval_assignments.filter(approver=request.user).exists()
+    )
+
+
+def _build_appraisal_result_context(request, appraisal):
+    """Build shared context for on-screen and downloadable appraisal results."""
+    is_own = appraisal.staff == request.user
+
+    all_assignments = appraisal.approval_assignments.select_related(
+        'step', 'approver'
+    ).order_by('step__step_number')
+
+    can_acknowledge = (
+        is_own and
+        appraisal.status == Appraisal.APPROVED and
+        not appraisal.staff_acknowledged_at
+    )
+
+    # Build sections for display — all configured fields with all responses.
+    # Empty sections are skipped so blank instruction-only cards are not shown.
+    result_sections = []
+    for section in FormSection.objects.filter(cycle=appraisal.cycle).order_by('order'):
+        fields_data = []
+        for field in section.fields.order_by('order'):
+            primary_resp = FormFieldResponse.objects.filter(
+                appraisal=appraisal,
+                field=field,
+                response_type=FormFieldResponse.PRIMARY,
+            ).select_related('responded_by').first()
+
+            mode_b_responses = FormFieldResponse.objects.filter(
+                appraisal=appraisal,
+                field=field,
+                response_type__in=[FormFieldResponse.REVIEWER_SCORE, FormFieldResponse.REVIEWER_COMMENT],
+            ).select_related('responded_by')
+
+            fields_data.append({
+                'field': field,
+                'response': primary_resp,
+                'mode_b_responses': mode_b_responses,
+            })
+        if fields_data:
+            result_sections.append({'section': section, 'fields': fields_data})
+
+    return {
+        'appraisal': appraisal,
+        'all_assignments': all_assignments,
+        'can_acknowledge': can_acknowledge,
+        'is_own': is_own,
+        'result_sections': result_sections,
+        'FIELD_TYPE': {
+            'NARRATIVE': FormField.NARRATIVE,
+            'SCORE': FormField.SCORE,
+            'SCORE_COMMENT': FormField.SCORE_COMMENT,
+            'SINGLE_SELECT': FormField.SINGLE_SELECT,
+            'MULTI_SELECT': FormField.MULTI_SELECT,
+        },
+        'RESPONSE_TYPE': {
+            'REVIEWER_SCORE': FormFieldResponse.REVIEWER_SCORE,
+            'REVIEWER_COMMENT': FormFieldResponse.REVIEWER_COMMENT,
+        },
+    }
 
 def _calculate_weighted_score(appraisal, score_type='self'):
     """
@@ -781,71 +851,34 @@ def appraisal_result(request, pk):
     """
     appraisal = get_object_or_404(Appraisal, pk=pk)
 
-    # Access: own appraisal, or HR admin, or any approver in the chain
-    is_own = appraisal.staff == request.user
-    is_hr_admin = request.user.role == CustomUser.HR_ADMIN
-    has_assignment = appraisal.approval_assignments.filter(approver=request.user).exists()
-
-    if not (is_own or is_hr_admin or has_assignment):
+    if not _user_can_view_appraisal(request, appraisal):
         messages.error(request, "You do not have permission to view this appraisal.")
         return redirect('accounts:dashboard_redirect')
 
-    all_assignments = appraisal.approval_assignments.select_related(
-        'step', 'approver'
-    ).order_by('step__step_number')
-
-    can_acknowledge = (
-        is_own and
-        appraisal.status == Appraisal.APPROVED and
-        not appraisal.staff_acknowledged_at
-    )
-
-    # Build sections for display — all fields with all responses
-    result_sections = []
-    for section in FormSection.objects.filter(cycle=appraisal.cycle).order_by('order'):
-        fields_data = []
-        for field in section.fields.order_by('order'):
-            # Primary response (appraisee or reviewer)
-            primary_resp = FormFieldResponse.objects.filter(
-                appraisal=appraisal,
-                field=field,
-                response_type=FormFieldResponse.PRIMARY,
-            ).select_related('responded_by').first()
-
-            # Any reviewer scores / comments on this field (Mode B)
-            mode_b_responses = FormFieldResponse.objects.filter(
-                appraisal=appraisal,
-                field=field,
-                response_type__in=[FormFieldResponse.REVIEWER_SCORE, FormFieldResponse.REVIEWER_COMMENT],
-            ).select_related('responded_by')
-
-            fields_data.append({
-                'field': field,
-                'response': primary_resp,
-                'mode_b_responses': mode_b_responses,
-            })
-        if fields_data:
-            result_sections.append({'section': section, 'fields': fields_data})
-
-    context = {
-        'appraisal': appraisal,
-        'all_assignments': all_assignments,
-        'can_acknowledge': can_acknowledge,
-        'is_own': is_own,
-        'result_sections': result_sections,
-        'FIELD_TYPE': {
-            'NARRATIVE': FormField.NARRATIVE,
-            'SCORE': FormField.SCORE,
-            'SCORE_COMMENT': FormField.SCORE_COMMENT,
-            'SINGLE_SELECT': FormField.SINGLE_SELECT,
-            'MULTI_SELECT': FormField.MULTI_SELECT,
-        },
-        'RESPONSE_TYPE': {
-            'REVIEWER_SCORE': FormFieldResponse.REVIEWER_SCORE,
-            'REVIEWER_COMMENT': FormFieldResponse.REVIEWER_COMMENT,
-        },
-    }
+    context = _build_appraisal_result_context(request, appraisal)
     return render(request, 'appraisals/appraisal_result.html', context)
+
+
+@login_required
+def download_appraisal_result(request, pk):
+    """Download a standalone HTML report for an appraisal the user can view."""
+    appraisal = get_object_or_404(Appraisal, pk=pk)
+
+    if not _user_can_view_appraisal(request, appraisal):
+        messages.error(request, "You do not have permission to download this appraisal.")
+        return redirect('accounts:dashboard_redirect')
+
+    context = _build_appraisal_result_context(request, appraisal)
+    html = render_to_string('appraisals/appraisal_result_download.html', context, request=request)
+
+    staff_slug = slugify(appraisal.staff.get_full_name() or appraisal.staff.username) or f"staff-{appraisal.staff_id}"
+    cycle_slug = slugify(appraisal.cycle.name) or f"cycle-{appraisal.cycle_id}"
+    filename = f"appraisal-{staff_slug}-{cycle_slug}.html"
+
+    response = HttpResponse(html, content_type='text/html; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 
 # ============================================================

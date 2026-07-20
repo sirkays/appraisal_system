@@ -19,6 +19,7 @@ urlpatterns = [
 
     # Appraisal final result + acknowledgement
     path('<int:pk>/result/', views.appraisal_result, name='appraisal_result'),
+    path('<int:pk>/result/download/', views.download_appraisal_result, name='download_appraisal_result'),
     path('<int:pk>/acknowledge/', views.acknowledge_appraisal, name='acknowledge_appraisal'),
 
     # Team / department list views (legacy but still useful)
