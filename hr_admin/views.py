@@ -13,7 +13,7 @@ from appraisals.models import (
 import json
 
 
-def _clone_appraisal_cycle(source_cycle, created_by, *, name=None, status=None):
+def _clone_appraisal_cycle(source_cycle, created_by, *, name=None, status=None, clone_appraisals=True):
     """Clone a cycle's setup without copying staff appraisal submissions."""
     with transaction.atomic():
         cloned_cycle = AppraisalCycle.objects.create(
@@ -75,9 +75,55 @@ def _clone_appraisal_cycle(source_cycle, created_by, *, name=None, status=None):
                     can_score=step.can_score,
                 )
 
-        _initialize_cycle_appraisals(cloned_cycle)
+        if clone_appraisals:
+            _initialize_cycle_appraisals(cloned_cycle)
+            _copy_cycle_approver_assignments(source_cycle, cloned_cycle)
 
     return cloned_cycle
+
+
+def _copy_cycle_approver_assignments(source_cycle, cloned_cycle):
+    """Copy approver routing choices from a source cycle into fresh cloned appraisals."""
+    process_map = {
+        (process.name, process.is_general): process
+        for process in cloned_cycle.approval_processes.all()
+    }
+    step_map = {
+        (step.process.name, step.process.is_general, step.step_number, step.role_required): step
+        for step in ApprovalStep.objects.filter(process__cycle=cloned_cycle).select_related('process')
+    }
+    cloned_appraisals = {
+        appraisal.staff_id: appraisal
+        for appraisal in cloned_cycle.appraisals.select_related('staff')
+    }
+
+    for source_appraisal in source_cycle.appraisals.select_related('override_process', 'staff'):
+        cloned_appraisal = cloned_appraisals.get(source_appraisal.staff_id)
+        if not cloned_appraisal:
+            continue
+
+        if source_appraisal.override_process:
+            cloned_override = process_map.get((source_appraisal.override_process.name, False))
+            if cloned_override:
+                cloned_appraisal.override_process = cloned_override
+                cloned_appraisal.save(update_fields=['override_process'])
+                _create_assignments_for_appraisal(cloned_appraisal, cloned_override)
+
+        for source_assignment in source_appraisal.approval_assignments.select_related('step__process'):
+            cloned_step = step_map.get((
+                source_assignment.step.process.name,
+                source_assignment.step.process.is_general,
+                source_assignment.step.step_number,
+                source_assignment.step.role_required,
+            ))
+            if not cloned_step:
+                continue
+            cloned_assignment, _ = AppraisalApprovalAssignment.objects.get_or_create(
+                appraisal=cloned_appraisal,
+                step=cloned_step,
+            )
+            cloned_assignment.approver = source_assignment.approver
+            cloned_assignment.save(update_fields=['approver'])
 
 
 def hr_required(view_func):
@@ -225,10 +271,22 @@ def cycle_clone(request, pk):
         return redirect('hr_admin:cycle_list')
 
     clone_name = request.POST.get('name', '').strip() or None
-    cloned_cycle = _clone_appraisal_cycle(source_cycle, request.user, name=clone_name)
+    clone_mode = request.POST.get('clone_mode', 'entire_cycle')
+    clone_appraisals = clone_mode != 'setup_only'
+    cloned_cycle = _clone_appraisal_cycle(
+        source_cycle,
+        request.user,
+        name=clone_name,
+        clone_appraisals=clone_appraisals,
+    )
+    clone_detail = (
+        'with fresh appraisal rows and copied approver routing'
+        if clone_appraisals
+        else 'with settings, approval processes, and forms only'
+    )
     messages.success(
         request,
-        f"Cycle '{source_cycle.name}' was cloned as '{cloned_cycle.name}'. Review the settings before activating it."
+        f"Cycle '{source_cycle.name}' was cloned as '{cloned_cycle.name}' {clone_detail}. Review the settings before activating it."
     )
     return redirect('hr_admin:cycle_edit', pk=cloned_cycle.pk)
 

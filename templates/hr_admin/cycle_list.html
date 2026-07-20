@@ -68,10 +68,11 @@
                         <div class="flex justify-end gap-2">
                             <a href="{% url 'hr_admin:cycle_settings' cycle.id %}" class="text-emerald-600 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors">Settings</a>
                             <a href="{% url 'hr_admin:cycle_edit' cycle.id %}" class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">Builder</a>
-                            <form method="post" action="{% url 'hr_admin:cycle_clone' cycle.id %}" class="inline" onsubmit="return confirm('Clone this cycle setup? Appraisal submissions will not be copied.');">
-                                {% csrf_token %}
-                                <button type="submit" class="text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">Clone</button>
-                            </form>
+                            <button type="button"
+                                    onclick="openCloneModal('{{ cycle.id }}')"
+                                    class="text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">
+                                Clone
+                            </button>
                             <form method="post" action="{% url 'hr_admin:cycle_delete' cycle.id %}" class="inline"
                                   onsubmit="return confirm('{% if cycle.can_be_deleted %}Delete this appraisal cycle permanently?{% elif cycle.status == 'ARCHIVED' %}This archived cycle cannot be deleted until its 30-day retention period ends.{% else %}This cycle has submitted appraisals, so it will be archived for 30 days before deletion is allowed.{% endif %}');">
                                 {% csrf_token %}
@@ -100,5 +101,56 @@
             </tbody>
         </table>
     </div>
+
+    {% for cycle in cycles %}
+    <div id="clone-modal-{{ cycle.id }}" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="clone-modal-title-{{ cycle.id }}" role="dialog" aria-modal="true">
+                        <div class="flex min-h-screen items-center justify-center px-4 py-6 text-center sm:block sm:p-0">
+                            <div class="fixed inset-0 bg-slate-900/50 transition-opacity" onclick="closeCloneModal('{{ cycle.id }}')"></div>
+                            <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
+                            <div class="relative inline-block w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:align-middle">
+                                <div class="border-b border-slate-200 px-6 py-5">
+                                    <h3 id="clone-modal-title-{{ cycle.id }}" class="text-lg font-semibold text-slate-900">Clone {{ cycle.name }}</h3>
+                                    <p class="mt-1 text-sm text-slate-500">Choose how much of this cycle should be copied.</p>
+                                </div>
+                                <div class="grid gap-4 p-6 md:grid-cols-2">
+                                    <form method="post" action="{% url 'hr_admin:cycle_clone' cycle.id %}" class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-5 hover:border-emerald-400 transition-colors">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="clone_mode" value="entire_cycle">
+                                        <h4 class="text-base font-semibold text-emerald-900">Clone entire cycle</h4>
+                                        <p class="mt-2 text-sm text-emerald-800">Copies settings, forms, approval processes, targeting, and approver routing into fresh appraisal rows.</p>
+                                        <button type="submit" class="mt-5 inline-flex w-full justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Clone Entire Cycle</button>
+                                    </form>
+                                    <form method="post" action="{% url 'hr_admin:cycle_clone' cycle.id %}" class="rounded-xl border border-slate-200 bg-slate-50 p-5 hover:border-slate-400 transition-colors">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="clone_mode" value="setup_only">
+                                        <h4 class="text-base font-semibold text-slate-900">Clone setup only</h4>
+                                        <p class="mt-2 text-sm text-slate-600">Copies only cycle settings, approval processes, and forms. It will not create appraisal rows or assign approvers.</p>
+                                        <button type="submit" class="mt-5 inline-flex w-full justify-center rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Clone Setup Only</button>
+                                    </form>
+                                </div>
+                                <div class="bg-slate-50 px-6 py-4 text-right">
+                                    <button type="button" onclick="closeCloneModal('{{ cycle.id }}')" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+    {% endfor %}
 </div>
+<script>
+function openCloneModal(cycleId) {
+    const modal = document.getElementById(`clone-modal-${cycleId}`);
+    if (modal) modal.classList.remove('hidden');
+}
+function closeCloneModal(cycleId) {
+    const modal = document.getElementById(`clone-modal-${cycleId}`);
+    if (modal) modal.classList.add('hidden');
+}
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+        document.querySelectorAll('[id^="clone-modal-"]').forEach(function (modal) {
+            modal.classList.add('hidden');
+        });
+    }
+});
+</script>
 {% endblock %}

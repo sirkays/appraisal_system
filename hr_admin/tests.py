@@ -179,17 +179,30 @@ class AppraisalCycleCloneTests(TestCase):
             is_general=True,
             created_by=self.hr,
         )
-        ApprovalStep.objects.create(
+        step = ApprovalStep.objects.create(
             process=process,
             step_number=1,
             label="Supervisor Review",
             role_required=ApprovalStep.SUPERVISOR,
         )
+        source_appraisal = Appraisal.objects.create(
+            cycle=self.cycle,
+            staff=self.staff,
+            status=Appraisal.NOT_STARTED,
+        )
+        AppraisalApprovalAssignment.objects.create(
+            appraisal=source_appraisal,
+            step=step,
+            approver=self.hr,
+        )
 
-    def test_hr_can_clone_cycle_setup_and_create_fresh_target_appraisals(self):
+    def test_hr_can_clone_entire_cycle_and_create_fresh_target_appraisals(self):
         self.client.login(username="clone_hr_admin", password="pass12345")
 
-        response = self.client.post(reverse("hr_admin:cycle_clone", args=[self.cycle.id]))
+        response = self.client.post(
+            reverse("hr_admin:cycle_clone", args=[self.cycle.id]),
+            {"clone_mode": "entire_cycle"},
+        )
 
         cloned = AppraisalCycle.objects.exclude(id=self.cycle.id).get()
         self.assertRedirects(response, reverse("hr_admin:cycle_edit", args=[cloned.id]))
@@ -204,6 +217,25 @@ class AppraisalCycleCloneTests(TestCase):
         cloned_appraisal = Appraisal.objects.get(cycle=cloned, staff=self.staff)
         self.assertEqual(cloned_appraisal.status, Appraisal.NOT_STARTED)
         self.assertEqual(cloned_appraisal.approval_assignments.count(), 1)
+        self.assertEqual(cloned_appraisal.approval_assignments.first().approver, self.hr)
+
+    def test_hr_can_clone_setup_only_without_appraisals_or_assignments(self):
+        self.client.login(username="clone_hr_admin", password="pass12345")
+
+        response = self.client.post(
+            reverse("hr_admin:cycle_clone", args=[self.cycle.id]),
+            {"clone_mode": "setup_only"},
+        )
+
+        cloned = AppraisalCycle.objects.exclude(id=self.cycle.id).get()
+        self.assertRedirects(response, reverse("hr_admin:cycle_edit", args=[cloned.id]))
+        self.assertEqual(cloned.form_sections.count(), 1)
+        self.assertEqual(cloned.form_sections.first().fields.count(), 1)
+        self.assertEqual(cloned.approval_processes.count(), 1)
+        self.assertEqual(cloned.approval_processes.first().steps.count(), 1)
+        self.assertIn(self.department, cloned.target_departments.all())
+        self.assertFalse(Appraisal.objects.filter(cycle=cloned).exists())
+        self.assertFalse(AppraisalApprovalAssignment.objects.filter(appraisal__cycle=cloned).exists())
 
 
 class AppraisalCycleLifecycleTests(TestCase):
