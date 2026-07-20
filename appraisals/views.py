@@ -719,6 +719,14 @@ def step_review(request, pk):
         assignment for assignment in all_assignments
         if assignment.status == AppraisalApprovalAssignment.RETURNED and assignment.comments
     ]
+    reviewer_comment_entries = [
+        assignment for assignment in all_assignments
+        if assignment.comments
+        and assignment.status != AppraisalApprovalAssignment.RETURNED
+        and (
+            not assignment.approver_id or assignment.approver_id != request.user.id
+        )
+    ]
 
     context = {
         'appraisal': appraisal,
@@ -730,6 +738,7 @@ def step_review(request, pk):
         'reviewer_sections_data': reviewer_sections_data,
         'all_assignments': all_assignments,
         'return_reason_entries': return_reason_entries,
+        'reviewer_comment_entries': reviewer_comment_entries,
         'active_process': appraisal.active_process,
         'reviewer_filled_by': reviewer_filled_by,
         'FIELD_TYPE': {

@@ -242,6 +242,17 @@ class ReturnReasonVisibilityTests(TestCase):
         self.assertContains(response, "View attached evidence")
         self.assertContains(response, "/media/evidence/form_fields/supporting_document.docx")
 
+    def test_other_reviewer_general_comment_shows_on_review_page(self):
+        self.supervisor_assignment.comments = "Supervisor recommends approval after reviewing the evidence."
+        self.supervisor_assignment.save(update_fields=["comments"])
+
+        self.client.login(username="hod", password="pass12345")
+        response = self.client.get(reverse("appraisals:step_review", args=[self.appraisal.id]))
+
+        self.assertContains(response, "Reviewer Comments")
+        self.assertContains(response, "Supervisor Review")
+        self.assertContains(response, "Supervisor recommends approval after reviewing the evidence.")
+
 
 class MyAppraisalsStatsTests(TestCase):
     def test_summary_counts_are_scoped_to_logged_in_user(self):
