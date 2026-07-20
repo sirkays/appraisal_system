@@ -894,6 +894,7 @@ def my_review_queue(request):
     context = {
         'current_pending': current_pending,
         'past_assignments': past_assignments,
+        'past_actions': past_assignments,
         'active_cycle': active_cycle,
     }
     return render(request, 'appraisals/review_queue.html', context)

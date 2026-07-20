@@ -33,6 +33,7 @@ def dashboard(request):
 
     active_cycle = AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE).first()
     pending_assignments = 0
+    awaiting_my_review = 0
     appraisal_stats = {}
 
     if active_cycle:
@@ -53,12 +54,28 @@ def dashboard(request):
             status='PENDING'
         ).count()
 
+        ACTIONABLE_STATUSES = [
+            Appraisal.SUBMITTED,
+            Appraisal.AWAITING_STEP_REVIEW,
+            Appraisal.RETURNED_TO_REVIEWER,
+        ]
+        awaiting_my_review = sum(
+            1 for assignment in AppraisalApprovalAssignment.objects.filter(
+                appraisal__cycle=active_cycle,
+                approver=request.user,
+                status=AppraisalApprovalAssignment.PENDING,
+                appraisal__status__in=ACTIONABLE_STATUSES,
+            ).select_related('appraisal', 'step')
+            if assignment.appraisal.current_step_number == assignment.step.step_number
+        )
+
     context = {
         'active_cycle': active_cycle,
         'active_cycle_count': AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE).count(),
         'total_staff': User.objects.exclude(role='HR_ADMIN').count(),
         'appraisal_stats': appraisal_stats,
         'pending_assignments': pending_assignments,
+        'awaiting_my_review': awaiting_my_review,
     }
     return render(request, 'hr_admin/dashboard.html', context)
 

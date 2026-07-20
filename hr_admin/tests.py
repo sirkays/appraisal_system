@@ -2,7 +2,13 @@ from django.test import TestCase
 from django.urls import reverse
 
 from accounts.models import CustomUser
-from appraisals.models import Appraisal, AppraisalCycle
+from appraisals.models import (
+    Appraisal,
+    AppraisalApprovalAssignment,
+    AppraisalCycle,
+    ApprovalProcess,
+    ApprovalStep,
+)
 from branches.models import Branch
 from departments.models import Department
 
@@ -86,3 +92,34 @@ class StaffDirectoryFilterTests(TestCase):
         self.assertEqual(response.context["selected_branch_id"], str(self.hq_branch.id))
         self.assertEqual(response.context["selected_role"], CustomUser.STAFF)
         self.assertEqual(response.context["selected_status"], Appraisal.SUBMITTED)
+
+    def test_hr_reviewer_can_access_review_queue_from_dashboard_sidebar(self):
+        process = ApprovalProcess.objects.create(
+            cycle=self.cycle,
+            name="HR Review Process",
+            is_general=True,
+            created_by=self.hr,
+        )
+        step = ApprovalStep.objects.create(
+            process=process,
+            step_number=1,
+            label="HR Review",
+            role_required=ApprovalStep.HR_ADMIN,
+        )
+        appraisal = Appraisal.objects.get(cycle=self.cycle, staff=self.tax_staff)
+        appraisal.current_step_number = 1
+        appraisal.save(update_fields=["current_step_number"])
+        AppraisalApprovalAssignment.objects.create(
+            appraisal=appraisal,
+            step=step,
+            approver=self.hr,
+            status=AppraisalApprovalAssignment.PENDING,
+        )
+
+        self.client.login(username="hr_admin", password="pass12345")
+        response = self.client.get(reverse("hr_admin:dashboard"))
+
+        self.assertContains(response, "My Review Queue")
+        self.assertContains(response, "Awaiting My Review")
+        self.assertContains(response, "Open review queue")
+        self.assertEqual(response.context["awaiting_my_review"], 1)
