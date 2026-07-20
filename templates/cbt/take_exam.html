@@ -131,6 +131,8 @@
                                    id="q{{ question.pk }}_opt{{ option.pk }}"
                                    name="question_{{ question.pk }}"
                                    value="{{ option.pk }}"
+                                   data-question-id="{{ question.pk }}"
+                                   data-option-id="{{ option.pk }}"
                                    class="option-radio sr-only peer"
                                    {% if existing_answers|get_item:question.pk == option.pk %}checked{% endif %}>
                             <label for="q{{ question.pk }}_opt{{ option.pk }}"
@@ -287,6 +289,7 @@
         return {
             currentQuestion: 1,
             answeredQuestions: existingAnswers,
+            saveStatus: 'idle',
             timeRemaining: secondsRemaining,
             showConfirm: false,
             timer: null,
@@ -303,7 +306,44 @@
                         const name = e.target.name; // question_XX
                         const qIdx = this.getQuestionIndexByName(name);
                         if (qIdx) this.answeredQuestions.add(qIdx);
+                        this.saveAnswer(e.target);
                     });
+                });
+            },
+
+            csrfToken() {
+                const tokenInput = document.querySelector('#exam-form input[name="csrfmiddlewaretoken"]');
+                return tokenInput ? tokenInput.value : '';
+            },
+
+            saveAnswer(radio) {
+                const body = new URLSearchParams({
+                    question_id: radio.dataset.questionId,
+                    option_id: radio.dataset.optionId,
+                });
+
+                this.saveStatus = 'saving';
+                fetch("{% url 'cbt:save_answer' attempt.pk %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': this.csrfToken(),
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body,
+                    credentials: 'same-origin',
+                    keepalive: true,
+                })
+                .then(response => response.json().then(data => ({ ok: response.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok || !data.ok) {
+                        if (data && data.timed_out) this.autoSubmit();
+                        this.saveStatus = 'error';
+                        return;
+                    }
+                    this.saveStatus = 'saved';
+                })
+                .catch(() => {
+                    this.saveStatus = 'error';
                 });
             },
 

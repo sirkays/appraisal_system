@@ -32,6 +32,7 @@ urlpatterns = [
     path("exam/<int:pk>/", views.exam_detail, name="exam_detail"),
     path("exam/<int:pk>/start/", views.start_exam, name="start_exam"),
     path("attempt/<int:pk>/take/", views.take_exam, name="take_exam"),
+    path("attempt/<int:pk>/save-answer/", views.save_answer, name="save_answer"),
     path("attempt/<int:pk>/submit/", views.submit_exam, name="submit_exam"),
     path("attempt/<int:pk>/result/", views.exam_result, name="exam_result"),
     path("my-results/", views.my_results, name="my_results"),

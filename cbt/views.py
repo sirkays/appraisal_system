@@ -193,6 +193,50 @@ def take_exam(request, pk):
 
 
 @login_required
+def save_answer(request, pk):
+    """POST: Autosave one selected answer during an in-progress CBT attempt."""
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "POST required."}, status=405)
+
+    attempt = get_object_or_404(CBTAttempt, pk=pk, staff=request.user)
+
+    if attempt.status not in (CBTAttempt.NOT_STARTED, CBTAttempt.IN_PROGRESS):
+        return JsonResponse({"ok": False, "error": "This attempt is no longer active."}, status=400)
+
+    if attempt.is_timed_out:
+        attempt.status = CBTAttempt.TIMED_OUT
+        attempt.submitted_at = timezone.now()
+        attempt.calculate_score()
+        attempt.save()
+        return JsonResponse({"ok": False, "timed_out": True, "redirect_url": request.build_absolute_uri()})
+
+    question_id = request.POST.get("question_id")
+    option_id = request.POST.get("option_id")
+
+    try:
+        question = CBTQuestion.objects.get(pk=question_id, exam=attempt.exam)
+    except (CBTQuestion.DoesNotExist, ValueError, TypeError):
+        return JsonResponse({"ok": False, "error": "Invalid question."}, status=400)
+
+    if question.pk not in attempt.get_question_order():
+        return JsonResponse({"ok": False, "error": "Question is not part of this attempt."}, status=400)
+
+    answer, _ = CBTAnswer.objects.get_or_create(attempt=attempt, question=question)
+
+    if option_id:
+        try:
+            answer.selected_option = CBTOption.objects.get(pk=option_id, question=question)
+        except (CBTOption.DoesNotExist, ValueError, TypeError):
+            return JsonResponse({"ok": False, "error": "Invalid option."}, status=400)
+    else:
+        answer.selected_option = None
+    answer.save()
+
+    answered_count = attempt.answers.filter(selected_option__isnull=False).count()
+    return JsonResponse({"ok": True, "answered_count": answered_count})
+
+
+@login_required
 def submit_exam(request, pk):
     """POST: Save answers and calculate score."""
     attempt = get_object_or_404(CBTAttempt, pk=pk, staff=request.user)
