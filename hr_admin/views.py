@@ -601,6 +601,67 @@ def assign_approvers(request, cycle_pk):
     return render(request, 'hr_admin/assign_approvers.html', context)
 
 
+def _find_supervisor_chain_user(staff, role):
+    """Return the first supervisor-chain user with the requested role."""
+    seen = set()
+    current = getattr(staff, 'supervisor', None)
+    while current and current.pk not in seen:
+        seen.add(current.pk)
+        if current.role == role:
+            return current
+        current = getattr(current, 'supervisor', None)
+    return None
+
+
+def _resolve_dynamic_approver(appraisal, logic):
+    """Resolve dynamic bulk assignment logic for one appraisal."""
+    staff = appraisal.staff
+    department = getattr(staff, 'department', None)
+
+    if logic == 'supervisor':
+        return staff.supervisor
+
+    if logic == 'hod':
+        if department and department.hod:
+            return department.hod
+        if staff.role == CustomUser.HOD:
+            return staff
+        return _find_supervisor_chain_user(staff, CustomUser.HOD)
+
+    if logic == 'director':
+        if staff.role == CustomUser.DIRECTORATE:
+            return staff
+        director = _find_supervisor_chain_user(staff, CustomUser.DIRECTORATE)
+        if director:
+            return director
+        if department:
+            department_director = CustomUser.objects.filter(
+                department=department,
+                role=CustomUser.DIRECTORATE,
+                is_active=True,
+            ).first()
+            if department_director:
+                return department_director
+        if appraisal.cycle.branch:
+            return appraisal.cycle.branch.members.filter(
+                role=CustomUser.DIRECTORATE,
+                is_active=True,
+            ).first()
+        return CustomUser.objects.filter(role=CustomUser.DIRECTORATE, is_active=True).first()
+
+    if logic == 'hr_admin':
+        if appraisal.cycle.branch:
+            branch_hr = appraisal.cycle.branch.members.filter(
+                role=CustomUser.HR_ADMIN,
+                is_active=True,
+            ).first()
+            if branch_hr:
+                return branch_hr
+        return CustomUser.objects.filter(role=CustomUser.HR_ADMIN, is_active=True).first()
+
+    return None
+
+
 @hr_required
 def api_assign_approver(request, cycle_pk):
     if request.method == 'POST':
@@ -640,9 +701,11 @@ def api_bulk_assign(request, cycle_pk):
             target_step = get_object_or_404(ApprovalStep, pk=step_id)
             target_role = target_step.role_required
 
+            dynamic_logic_values = ('supervisor', 'hod', 'director', 'hr_admin')
+
             # Resolve the specific person once if logic is a user ID
             specific_user = None
-            if logic and logic not in ('supervisor', 'hod'):
+            if logic and logic not in dynamic_logic_values:
                 try:
                     specific_user = CustomUser.objects.get(pk=int(logic))
                 except (ValueError, CustomUser.DoesNotExist):
@@ -651,7 +714,8 @@ def api_bulk_assign(request, cycle_pk):
             # Get all appraisals in this cycle (filtered by visible if appraisal_ids given)
             from appraisals.models import Appraisal
             appraisals_qs = Appraisal.objects.filter(cycle_id=cycle_pk).select_related(
-                'staff', 'staff__department', 'staff__supervisor',
+                'cycle', 'cycle__branch', 'staff', 'staff__department', 'staff__department__hod',
+                'staff__supervisor', 'staff__supervisor__supervisor',
                 'override_process'
             ).prefetch_related('approval_assignments__step')
 
@@ -668,15 +732,10 @@ def api_bulk_assign(request, cycle_pk):
                 if not matching_assignment:
                     continue
 
-                if logic == 'supervisor':
-                    if appraisal.staff.supervisor:
-                        matching_assignment.approver = appraisal.staff.supervisor
-                        matching_assignment.save()
-                        count += 1
-                elif logic == 'hod':
-                    department = appraisal.staff.department
-                    if department and department.hod:
-                        matching_assignment.approver = department.hod
+                if logic in dynamic_logic_values:
+                    approver = _resolve_dynamic_approver(appraisal, logic)
+                    if approver:
+                        matching_assignment.approver = approver
                         matching_assignment.save()
                         count += 1
                 elif specific_user:

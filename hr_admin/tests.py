@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.urls import reverse
+import json
 
 from accounts.models import CustomUser
 from appraisals.models import (
@@ -198,3 +199,118 @@ class AppraisalCycleCloneTests(TestCase):
         self.assertIn(self.department, cloned.target_departments.all())
         self.assertIn(self.staff, cloned.target_staff.all())
         self.assertFalse(Appraisal.objects.filter(cycle=cloned).exists())
+
+
+class BulkApproverAssignmentTests(TestCase):
+    def setUp(self):
+        self.hr = CustomUser.objects.create_user(
+            username="bulk_hr_admin",
+            password="pass12345",
+            staff_id="BULK-HR-001",
+            role=CustomUser.HR_ADMIN,
+        )
+        self.director = CustomUser.objects.create_user(
+            username="bulk_director",
+            password="pass12345",
+            staff_id="BULK-DIR-001",
+            role=CustomUser.DIRECTORATE,
+        )
+        self.department = Department.objects.create(name="Audit & Investigation", code="BAUD")
+        self.hod = CustomUser.objects.create_user(
+            username="bulk_hod",
+            password="pass12345",
+            staff_id="BULK-HOD-001",
+            role=CustomUser.HOD,
+            department=self.department,
+            supervisor=self.director,
+        )
+        self.department.hod = self.hod
+        self.department.save(update_fields=["hod"])
+        self.supervisor = CustomUser.objects.create_user(
+            username="bulk_supervisor",
+            password="pass12345",
+            staff_id="BULK-SUP-001",
+            role=CustomUser.SUPERVISOR,
+            department=self.department,
+            supervisor=self.hod,
+        )
+        self.staff = CustomUser.objects.create_user(
+            username="bulk_staff",
+            password="pass12345",
+            staff_id="BULK-STF-001",
+            role=CustomUser.STAFF,
+            department=self.department,
+            supervisor=self.supervisor,
+        )
+        self.cycle = AppraisalCycle.objects.create(
+            name="Audit Cycle",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            status=AppraisalCycle.ACTIVE,
+            created_by=self.hr,
+        )
+        process = ApprovalProcess.objects.create(
+            cycle=self.cycle,
+            name="Standard Review",
+            is_general=True,
+            created_by=self.hr,
+        )
+        self.hod_step = ApprovalStep.objects.create(
+            process=process,
+            step_number=2,
+            label="HOD Review",
+            role_required=ApprovalStep.HOD,
+        )
+        self.director_step = ApprovalStep.objects.create(
+            process=process,
+            step_number=3,
+            label="Director Review",
+            role_required=ApprovalStep.DIRECTORATE,
+        )
+        self.appraisal = Appraisal.objects.create(
+            cycle=self.cycle,
+            staff=self.staff,
+            supervisor=self.supervisor,
+        )
+        self.hod_assignment = AppraisalApprovalAssignment.objects.create(
+            appraisal=self.appraisal,
+            step=self.hod_step,
+        )
+        self.director_assignment = AppraisalApprovalAssignment.objects.create(
+            appraisal=self.appraisal,
+            step=self.director_step,
+        )
+
+    def test_bulk_assign_hod_uses_department_hod(self):
+        self.client.login(username="bulk_hr_admin", password="pass12345")
+
+        response = self.client.post(
+            reverse("hr_admin:api_bulk_assign", args=[self.cycle.id]),
+            data=json.dumps({
+                "step_id": self.hod_step.id,
+                "logic": "hod",
+                "appraisal_ids": [self.appraisal.id],
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.hod_assignment.refresh_from_db()
+        self.assertEqual(self.hod_assignment.approver, self.hod)
+
+    def test_bulk_assign_director_uses_reporting_chain(self):
+        self.client.login(username="bulk_hr_admin", password="pass12345")
+
+        response = self.client.post(
+            reverse("hr_admin:api_bulk_assign", args=[self.cycle.id]),
+            data=json.dumps({
+                "step_id": self.director_step.id,
+                "logic": "director",
+                "appraisal_ids": [self.appraisal.id],
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.director_assignment.refresh_from_db()
+        self.assertEqual(self.director_assignment.approver, self.director)

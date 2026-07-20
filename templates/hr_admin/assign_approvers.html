@@ -407,6 +407,10 @@ function runBulkAssignment() {
   const type = document.getElementById('bulkType').value;
   
   if (!stepId) return;
+  if (!logic) {
+    showToast('error', 'Select an assignment logic before running auto-assignment.');
+    return;
+  }
 
   sessionStorage.setItem('bulkStepId', stepId);
   sessionStorage.setItem('bulkType', type);
@@ -445,8 +449,17 @@ function runBulkAssignment() {
 
 const dynamicOptions = [
   { value: 'supervisor', text: 'Direct Supervisor (Reports To)', roleCode: 'dynamic', icon: '👤' },
-  { value: 'hod', text: 'Department HOD', roleCode: 'dynamic', icon: '🏢' }
+  { value: 'hod', text: 'Department HOD / HOD in Reporting Chain', roleCode: 'dynamic', icon: '🏢' },
+  { value: 'director', text: 'Director in Reporting Chain', roleCode: 'dynamic', icon: '🏛️' },
+  { value: 'hr_admin', text: 'HR Administrator', roleCode: 'dynamic', icon: '🧑‍💼' }
 ];
+
+const defaultDynamicLogicByRole = {
+  SUPERVISOR: 'supervisor',
+  HOD: 'hod',
+  DIRECTORATE: 'director',
+  HR_ADMIN: 'hr_admin'
+};
 
 const specificOptions = [
   {% for user in all_active_users %}
@@ -525,14 +538,15 @@ function toggleLogicDropdown() {
   let isDynamic = (type === 'dynamic');
   
   if (isDynamic) {
-    const isDynamicStep = (roleRequired === 'SUPERVISOR' || roleRequired === 'HOD');
+    const isDynamicStep = Boolean(defaultDynamicLogicByRole[roleRequired]);
     
     toggleContainer.style.display = isDynamicStep ? 'none' : 'inline-flex';
     toggleLabel.textContent = 'Force Options';
     warningMsg.classList.add('hidden');
     
     if (isDynamicStep) {
-      options = dynamicOptions;
+      const defaultLogic = defaultDynamicLogicByRole[roleRequired];
+      options = dynamicOptions.filter(option => option.value === defaultLogic);
     } else {
       if (toggleChecked) {
         options = dynamicOptions;
@@ -588,6 +602,10 @@ function toggleLogicDropdown() {
       dropdown.classList.remove('dropup');
     }
   });
+
+  if (isDynamic && options.length === 1) {
+    bulkLogicSelect.setValue(options[0].value);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -693,7 +711,11 @@ document.addEventListener('DOMContentLoaded', () => {
   toggleLogicDropdown();
   
   if (savedLogic) {
-    bulkLogicSelect.setValue(savedLogic);
+    if (bulkLogicSelect.options[savedLogic]) {
+      bulkLogicSelect.setValue(savedLogic);
+    } else {
+      sessionStorage.removeItem('bulkLogic');
+    }
   }
 
   // Initialize filters
