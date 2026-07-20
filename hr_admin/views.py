@@ -574,6 +574,14 @@ def assign_approvers(request, cycle_pk):
     for role_code, role_label in ApprovalStep.ROLE_CHOICES:
         role_users[role_code] = CustomUser.objects.filter(role=role_code, is_active=True)
 
+    all_active_users = CustomUser.objects.filter(is_active=True)
+    if cycle.branch:
+        all_active_users = all_active_users.filter(
+            Q(branches=cycle.branch) |
+            Q(department__in=cycle.target_departments.all()) |
+            Q(id__in=cycle.target_staff.values_list('id', flat=True))
+        ).distinct()
+
     # Build assignment map: {appraisal_pk: {step_number: assignment}}
     assignments_map = {}
     for appraisal in appraisals:
@@ -596,7 +604,7 @@ def assign_approvers(request, cycle_pk):
         'appraisals': appraisals,
         'assignments_map': assignments_map,
         'role_users': role_users,
-        'all_active_users': cycle.branch.members.filter(is_active=True).order_by('last_name', 'first_name') if cycle.branch else CustomUser.objects.filter(is_active=True).order_by('last_name', 'first_name'),
+        'all_active_users': all_active_users.order_by('last_name', 'first_name'),
     }
     return render(request, 'hr_admin/assign_approvers.html', context)
 
@@ -626,7 +634,16 @@ def _resolve_dynamic_approver(appraisal, logic):
             return department.hod
         if staff.role == CustomUser.HOD:
             return staff
-        return _find_supervisor_chain_user(staff, CustomUser.HOD)
+        chain_hod = _find_supervisor_chain_user(staff, CustomUser.HOD)
+        if chain_hod:
+            return chain_hod
+        if department:
+            return CustomUser.objects.filter(
+                department=department,
+                role=CustomUser.HOD,
+                is_active=True,
+            ).first()
+        return None
 
     if logic == 'director':
         if staff.role == CustomUser.DIRECTORATE:

@@ -214,13 +214,19 @@ class BulkApproverAssignmentTests(TestCase):
             password="pass12345",
             staff_id="BULK-DIR-001",
             role=CustomUser.DIRECTORATE,
+            first_name="Director",
+            last_name="Audit",
         )
         self.department = Department.objects.create(name="Audit & Investigation", code="BAUD")
+        self.branch = Branch.objects.create(name="Headquarters Bulk", code="BHQ")
+        self.branch.departments.add(self.department)
         self.hod = CustomUser.objects.create_user(
             username="bulk_hod",
             password="pass12345",
             staff_id="BULK-HOD-001",
             role=CustomUser.HOD,
+            first_name="HOD",
+            last_name="Audit",
             department=self.department,
             supervisor=self.director,
         )
@@ -231,6 +237,8 @@ class BulkApproverAssignmentTests(TestCase):
             password="pass12345",
             staff_id="BULK-SUP-001",
             role=CustomUser.SUPERVISOR,
+            first_name="Supervisor",
+            last_name="Audit",
             department=self.department,
             supervisor=self.hod,
         )
@@ -248,7 +256,10 @@ class BulkApproverAssignmentTests(TestCase):
             end_date="2026-12-31",
             status=AppraisalCycle.ACTIVE,
             created_by=self.hr,
+            branch=self.branch,
         )
+        self.cycle.target_departments.add(self.department)
+        self.branch.members.add(self.hr, self.supervisor, self.staff)
         process = ApprovalProcess.objects.create(
             cycle=self.cycle,
             name="Standard Review",
@@ -314,3 +325,10 @@ class BulkApproverAssignmentTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.director_assignment.refresh_from_db()
         self.assertEqual(self.director_assignment.approver, self.director)
+
+    def test_assign_approvers_lists_target_department_hod_even_if_not_branch_member(self):
+        self.client.login(username="bulk_hr_admin", password="pass12345")
+
+        response = self.client.get(reverse("hr_admin:assign_approvers", args=[self.cycle.id]))
+
+        self.assertContains(response, "HOD Audit")
