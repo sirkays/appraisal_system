@@ -168,6 +168,8 @@ def _advance_appraisal(appraisal, current_assignment, actioning_user):
 def _return_appraisal(appraisal, current_assignment, actioning_user, return_comment):
     """
     Return the appraisal. Step 1 returns go to staff; higher steps return to previous step.
+    Keep the latest return reason on the appraisal and the assignment so
+    every reviewer page can display why the appraisal was returned.
     """
     from notifications.models import Notification
 
@@ -199,6 +201,7 @@ def _return_appraisal(appraisal, current_assignment, actioning_user, return_comm
         prev_step = process.steps.filter(step_number=prev_step_number).first() if process else None
 
         appraisal.status = Appraisal.RETURNED_TO_REVIEWER
+        appraisal.hod_return_notes = return_comment
         appraisal.current_step_number = prev_step_number
         appraisal.save()
 
@@ -627,7 +630,7 @@ def step_review(request, pk):
             return redirect('accounts:dashboard_redirect')
 
         elif action == 'return':
-            return_comment = request.POST.get('return_comment', '').strip()
+            return_comment = request.POST.get('return_comment', '').strip() or comments
             _return_appraisal(appraisal, current_assignment, request.user, return_comment)
             messages.success(request, "Appraisal returned for revision.")
             return redirect('accounts:dashboard_redirect')
@@ -693,6 +696,11 @@ def step_review(request, pk):
         'step', 'approver'
     ).order_by('step__step_number')
 
+    return_reason_entries = [
+        assignment for assignment in all_assignments
+        if assignment.status == AppraisalApprovalAssignment.RETURNED and assignment.comments
+    ]
+
     context = {
         'appraisal': appraisal,
         'current_assignment': current_assignment,
@@ -702,6 +710,7 @@ def step_review(request, pk):
         'appraisee_sections_data': appraisee_sections_data,
         'reviewer_sections_data': reviewer_sections_data,
         'all_assignments': all_assignments,
+        'return_reason_entries': return_reason_entries,
         'active_process': appraisal.active_process,
         'reviewer_filled_by': reviewer_filled_by,
         'FIELD_TYPE': {

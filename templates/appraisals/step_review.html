@@ -33,6 +33,36 @@
         </div>
     {% endfor %}
 
+    <!-- Return reasons from any reviewer -->
+    {% if return_reason_entries or appraisal.supervisor_return_notes or appraisal.hod_return_notes %}
+    <div class="mb-8 p-5 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+        <h3 class="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-3">Return Reason</h3>
+        <div class="space-y-3">
+            {% for assignment in return_reason_entries %}
+            <div class="rounded-xl bg-white/70 dark:bg-slate-900/50 border border-amber-100 dark:border-amber-800/60 p-4">
+                <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    {{ assignment.step.label }}{% if assignment.approver %} — {{ assignment.approver.get_full_name }}{% endif %}
+                </p>
+                <p class="mt-2 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap">{{ assignment.comments }}</p>
+            </div>
+            {% empty %}
+                {% if appraisal.hod_return_notes %}
+                <div class="rounded-xl bg-white/70 dark:bg-slate-900/50 border border-amber-100 dark:border-amber-800/60 p-4">
+                    <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Reviewer return note</p>
+                    <p class="mt-2 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap">{{ appraisal.hod_return_notes }}</p>
+                </div>
+                {% endif %}
+                {% if appraisal.supervisor_return_notes %}
+                <div class="rounded-xl bg-white/70 dark:bg-slate-900/50 border border-amber-100 dark:border-amber-800/60 p-4">
+                    <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Supervisor return note</p>
+                    <p class="mt-2 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap">{{ appraisal.supervisor_return_notes }}</p>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Approval progress -->
     {% if all_assignments %}
     <div class="mb-8 p-5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800">
