@@ -183,7 +183,7 @@ class AppraisalCycleCloneTests(TestCase):
             role_required=ApprovalStep.SUPERVISOR,
         )
 
-    def test_hr_can_clone_cycle_setup_without_copying_appraisals(self):
+    def test_hr_can_clone_cycle_setup_and_create_fresh_target_appraisals(self):
         self.client.login(username="clone_hr_admin", password="pass12345")
 
         response = self.client.post(reverse("hr_admin:cycle_clone", args=[self.cycle.id]))
@@ -198,7 +198,9 @@ class AppraisalCycleCloneTests(TestCase):
         self.assertEqual(cloned.approval_processes.first().steps.count(), 1)
         self.assertIn(self.department, cloned.target_departments.all())
         self.assertIn(self.staff, cloned.target_staff.all())
-        self.assertFalse(Appraisal.objects.filter(cycle=cloned).exists())
+        cloned_appraisal = Appraisal.objects.get(cycle=cloned, staff=self.staff)
+        self.assertEqual(cloned_appraisal.status, Appraisal.NOT_STARTED)
+        self.assertEqual(cloned_appraisal.approval_assignments.count(), 1)
 
 
 class BulkApproverAssignmentTests(TestCase):

@@ -74,6 +74,8 @@ def _clone_appraisal_cycle(source_cycle, created_by, *, name=None, status=None):
                     can_score=step.can_score,
                 )
 
+        _initialize_cycle_appraisals(cloned_cycle)
+
     return cloned_cycle
 
 
@@ -553,6 +555,8 @@ def assign_approvers(request, cycle_pk):
     if not general_process:
         messages.warning(request, "No general approval process defined for this cycle. Please create one first.")
         return redirect('hr_admin:approval_process_list', cycle_pk=cycle_pk)
+
+    _initialize_cycle_appraisals(cycle)
 
     from django.db.models import Case, When, Value, IntegerField
     steps = general_process.steps.all()
