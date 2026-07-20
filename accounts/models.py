@@ -2,7 +2,7 @@
 Custom user model for the Staff Performance Appraisal System.
 
 Extends Django's ``AbstractUser`` to add fields specific to the
-State Internal Revenue Service organisational structure, including
+Staff Appraisal Organization organisational structure, including
 a unique staff identifier, role-based access designation, department
 association, and supervisor hierarchy.
 """
@@ -15,7 +15,7 @@ from .managers import CustomUserManager
 
 class CustomUser(AbstractUser):
     """
-    Staff member in the State Internal Revenue Service.
+    Staff member in the Staff Appraisal Organization.
 
     Roles
     -----

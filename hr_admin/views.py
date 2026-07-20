@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
+from django.db import transaction
 from appraisals.models import (
     AppraisalCycle, KPICategory, CompetencyCategory, NarrativeField,
     ApprovalProcess, ApprovalStep, AppraisalApprovalAssignment, Appraisal,
@@ -9,6 +10,71 @@ from appraisals.models import (
     FormSection, FormField,
 )
 import json
+
+
+def _clone_appraisal_cycle(source_cycle, created_by, *, name=None, status=None):
+    """Clone a cycle's setup without copying staff appraisal submissions."""
+    with transaction.atomic():
+        cloned_cycle = AppraisalCycle.objects.create(
+            name=name or f"Copy of {source_cycle.name}",
+            frequency=source_cycle.frequency,
+            start_date=source_cycle.start_date,
+            end_date=source_cycle.end_date,
+            status=status or AppraisalCycle.DRAFT,
+            scoring_scale=source_cycle.scoring_scale,
+            branch=source_cycle.branch,
+            created_by=created_by,
+        )
+        cloned_cycle.target_departments.set(source_cycle.target_departments.all())
+        cloned_cycle.target_staff.set(source_cycle.target_staff.all())
+        cloned_cycle.excluded_staff.set(source_cycle.excluded_staff.all())
+
+        for section in source_cycle.form_sections.prefetch_related('fields').order_by('order'):
+            cloned_section = FormSection.objects.create(
+                cycle=cloned_cycle,
+                name=section.name,
+                description=section.description,
+                section_weight=section.section_weight,
+                order=section.order,
+            )
+            for field in section.fields.order_by('order'):
+                FormField.objects.create(
+                    section=cloned_section,
+                    label=field.label,
+                    description=field.description,
+                    field_type=field.field_type,
+                    filled_by=field.filled_by,
+                    max_score=field.max_score,
+                    min_score=field.min_score,
+                    options=field.options,
+                    reviewer_can_score=field.reviewer_can_score,
+                    reviewer_score_role=field.reviewer_score_role,
+                    reviewer_score_max=field.reviewer_score_max,
+                    reviewer_can_comment=field.reviewer_can_comment,
+                    reviewer_comment_role=field.reviewer_comment_role,
+                    is_required=field.is_required,
+                    order=field.order,
+                )
+
+        for process in source_cycle.approval_processes.prefetch_related('steps').order_by('-is_general', 'name'):
+            cloned_process = ApprovalProcess.objects.create(
+                cycle=cloned_cycle,
+                name=process.name,
+                is_general=process.is_general,
+                created_by=created_by,
+            )
+            for step in process.steps.order_by('step_number'):
+                ApprovalStep.objects.create(
+                    process=cloned_process,
+                    step_number=step.step_number,
+                    label=step.label,
+                    role_required=step.role_required,
+                    action_label_approve=step.action_label_approve,
+                    action_label_return=step.action_label_return,
+                    can_score=step.can_score,
+                )
+
+    return cloned_cycle
 
 
 def hr_required(view_func):
@@ -146,6 +212,22 @@ def cycle_create(request):
         'target_staff_ids': []
     }
     return render(request, 'hr_admin/cycle_form.html', context)
+
+
+@hr_required
+def cycle_clone(request, pk):
+    source_cycle = get_object_or_404(AppraisalCycle, pk=pk)
+
+    if request.method != 'POST':
+        return redirect('hr_admin:cycle_list')
+
+    clone_name = request.POST.get('name', '').strip() or None
+    cloned_cycle = _clone_appraisal_cycle(source_cycle, request.user, name=clone_name)
+    messages.success(
+        request,
+        f"Cycle '{source_cycle.name}' was cloned as '{cloned_cycle.name}'. Review the settings before activating it."
+    )
+    return redirect('hr_admin:cycle_edit', pk=cloned_cycle.pk)
 
 
 @hr_required

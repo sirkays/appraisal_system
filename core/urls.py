@@ -24,6 +24,6 @@ if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Admin site customisation
-admin.site.site_header = 'State Internal Revenue - Staff Appraisal System'
+admin.site.site_header = 'Staff Appraisal Organization - Staff Appraisal System'
 admin.site.site_title = 'Appraisal Admin'
 admin.site.index_title = 'System Administration'

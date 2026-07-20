@@ -3,7 +3,7 @@ Models for the Notifications app.
 
 Provides the Notification model used to deliver in-app alerts to staff
 members regarding appraisal lifecycle events and general announcements
-within the State Internal Revenue Service Performance Appraisal System.
+within the Staff Appraisal Organization Performance Appraisal System.
 """
 
 from django.db import models

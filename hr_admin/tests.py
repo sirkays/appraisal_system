@@ -8,6 +8,8 @@ from appraisals.models import (
     AppraisalCycle,
     ApprovalProcess,
     ApprovalStep,
+    FormField,
+    FormSection,
 )
 from branches.models import Branch
 from departments.models import Department
@@ -123,3 +125,76 @@ class StaffDirectoryFilterTests(TestCase):
         self.assertContains(response, "Awaiting My Review")
         self.assertContains(response, "Open review queue")
         self.assertEqual(response.context["awaiting_my_review"], 1)
+
+
+class AppraisalCycleCloneTests(TestCase):
+    def setUp(self):
+        self.hr = CustomUser.objects.create_user(
+            username="clone_hr_admin",
+            password="pass12345",
+            staff_id="HR-CLONE-001",
+            role=CustomUser.HR_ADMIN,
+        )
+        self.department = Department.objects.create(name="Operations", code="OPS")
+        self.staff = CustomUser.objects.create_user(
+            username="clone_staff",
+            password="pass12345",
+            staff_id="CLONE-STF-001",
+            role=CustomUser.STAFF,
+            department=self.department,
+        )
+        self.cycle = AppraisalCycle.objects.create(
+            name="Original Cycle",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            status=AppraisalCycle.ACTIVE,
+            scoring_scale=5,
+            created_by=self.hr,
+        )
+        self.cycle.target_departments.add(self.department)
+        self.cycle.target_staff.add(self.staff)
+        section = FormSection.objects.create(
+            cycle=self.cycle,
+            name="Section A",
+            description="Original instructions",
+            section_weight=50,
+            order=1,
+        )
+        FormField.objects.create(
+            section=section,
+            label="KPI completed",
+            description="Maximum score obtainable: 10",
+            field_type=FormField.SCORE,
+            filled_by=FormField.SUPERVISOR,
+            max_score=10,
+            order=1,
+        )
+        process = ApprovalProcess.objects.create(
+            cycle=self.cycle,
+            name="Standard Review",
+            is_general=True,
+            created_by=self.hr,
+        )
+        ApprovalStep.objects.create(
+            process=process,
+            step_number=1,
+            label="Supervisor Review",
+            role_required=ApprovalStep.SUPERVISOR,
+        )
+
+    def test_hr_can_clone_cycle_setup_without_copying_appraisals(self):
+        self.client.login(username="clone_hr_admin", password="pass12345")
+
+        response = self.client.post(reverse("hr_admin:cycle_clone", args=[self.cycle.id]))
+
+        cloned = AppraisalCycle.objects.exclude(id=self.cycle.id).get()
+        self.assertRedirects(response, reverse("hr_admin:cycle_edit", args=[cloned.id]))
+        self.assertEqual(cloned.name, "Copy of Original Cycle")
+        self.assertEqual(cloned.status, AppraisalCycle.DRAFT)
+        self.assertEqual(cloned.form_sections.count(), 1)
+        self.assertEqual(cloned.form_sections.first().fields.count(), 1)
+        self.assertEqual(cloned.approval_processes.count(), 1)
+        self.assertEqual(cloned.approval_processes.first().steps.count(), 1)
+        self.assertIn(self.department, cloned.target_departments.all())
+        self.assertIn(self.staff, cloned.target_staff.all())
+        self.assertFalse(Appraisal.objects.filter(cycle=cloned).exists())

@@ -2,7 +2,7 @@
 Models for the Branches app.
 
 Defines the Branch entity used to group users and departments
-by organizational location within the State Internal Revenue Service.
+by organizational location within the Staff Appraisal Organization.
 """
 
 from django.conf import settings
@@ -12,7 +12,7 @@ from django.db import models
 class Branch(models.Model):
     """
     Represents an organizational branch/location within the
-    State Internal Revenue Service (e.g. 'Headquarters', 'Zonal Office Ikeja').
+    Staff Appraisal Organization (e.g. 'Headquarters', 'Zonal Office Ikeja').
     
     Users and departments can belong to multiple branches.
     Appraisal cycles are scoped to a specific branch.

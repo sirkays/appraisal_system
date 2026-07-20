@@ -1,7 +1,7 @@
 """
 Models for the Performance Appraisals app.
 
-Defines the complete appraisal workflow for the State Internal Revenue Service,
+Defines the complete appraisal workflow for the Staff Appraisal Organization,
 including appraisal cycles, KPI and competency frameworks, scoring, and
 fully dynamic multi-step approval processes (general per-cycle and per-staff overrides).
 """

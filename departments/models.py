@@ -2,7 +2,7 @@
 Models for the Departments app.
 
 Defines the Department entity used across the Staff Performance
-Appraisal System for the State Internal Revenue Service.
+Appraisal System for the Staff Appraisal Organization.
 """
 
 from django.db import models
@@ -11,7 +11,7 @@ from django.db import models
 class Department(models.Model):
     """
     Represents an organisational department within the
-    State Internal Revenue Service (e.g. Tax, Audit, HR).
+    Staff Appraisal Organization (e.g. Tax, Audit, HR).
     """
 
     name = models.CharField(
