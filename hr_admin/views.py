@@ -633,14 +633,94 @@ def set_override_process(request, appraisal_pk):
 
 from accounts.models import CustomUser
 from departments.models import Department
+from branches.models import Branch
+from appraisals.models import Appraisal, AppraisalCycle
 from .forms import StaffForm, DepartmentForm
 from django.db.models import Count, Avg, F, Q
 
 
 @hr_required
 def staff_list(request):
-    staff = CustomUser.objects.all().select_related('department', 'supervisor')
-    return render(request, 'hr_admin/staff_list.html', {'staff': staff})
+    selected_branch_id = request.GET.get('branch') or ''
+    selected_department_id = request.GET.get('department') or ''
+    selected_cycle_id = request.GET.get('cycle') or ''
+    selected_status = request.GET.get('status') or ''
+    selected_role = request.GET.get('role') or ''
+    search_q = (request.GET.get('q') or '').strip()
+
+    branches = Branch.objects.all()
+    departments = Department.objects.all()
+    cycles = AppraisalCycle.objects.select_related('branch').all()
+
+    selected_cycle = None
+    if selected_cycle_id:
+        selected_cycle = cycles.filter(pk=selected_cycle_id).first()
+    if selected_cycle is None:
+        selected_cycle = cycles.filter(status=AppraisalCycle.ACTIVE).first()
+        selected_cycle_id = str(selected_cycle.pk) if selected_cycle else ''
+
+    staff = CustomUser.objects.all().select_related('department', 'supervisor').prefetch_related('branches')
+
+    if selected_branch_id:
+        staff = staff.filter(branches__id=selected_branch_id).distinct()
+        departments = departments.filter(branches__id=selected_branch_id).distinct()
+
+    if selected_department_id:
+        staff = staff.filter(department_id=selected_department_id)
+
+    if selected_role:
+        staff = staff.filter(role=selected_role)
+
+    if search_q:
+        staff = staff.filter(
+            Q(first_name__icontains=search_q) |
+            Q(last_name__icontains=search_q) |
+            Q(username__icontains=search_q) |
+            Q(email__icontains=search_q) |
+            Q(staff_id__icontains=search_q) |
+            Q(designation__icontains=search_q)
+        )
+
+    if selected_cycle and selected_status:
+        cycle_appraisals = Appraisal.objects.filter(cycle=selected_cycle)
+        if selected_status == 'NO_RECORD':
+            staff = staff.exclude(appraisals__cycle=selected_cycle)
+        else:
+            staff = staff.filter(
+                id__in=cycle_appraisals.filter(status=selected_status).values('staff_id')
+            )
+
+    staff = list(staff.order_by('last_name', 'first_name', 'username'))
+
+    appraisal_map = {}
+    if selected_cycle and staff:
+        appraisal_map = {
+            appraisal.staff_id: appraisal
+            for appraisal in Appraisal.objects.filter(
+                cycle=selected_cycle,
+                staff_id__in=[person.id for person in staff],
+            )
+        }
+
+    for person in staff:
+        person.selected_cycle_appraisal = appraisal_map.get(person.id)
+
+    context = {
+        'staff': staff,
+        'branches': branches,
+        'departments': departments,
+        'cycles': cycles,
+        'role_choices': CustomUser.ROLE_CHOICES,
+        'appraisal_status_choices': Appraisal.STATUS_CHOICES,
+        'selected_branch_id': selected_branch_id,
+        'selected_department_id': selected_department_id,
+        'selected_cycle_id': selected_cycle_id,
+        'selected_status': selected_status,
+        'selected_role': selected_role,
+        'search_q': search_q,
+        'selected_cycle': selected_cycle,
+    }
+    return render(request, 'hr_admin/staff_list.html', context)
 
 
 @hr_required

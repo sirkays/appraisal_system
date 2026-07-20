@@ -17,6 +17,70 @@
         </a>
     </div>
 
+    <form method="get" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Branch</label>
+                <select name="branch" class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+                    <option value="">All branches</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}" {% if branch.id|stringformat:"s" == selected_branch_id %}selected{% endif %}>{{ branch.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Department</label>
+                <select name="department" class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+                    <option value="">All departments</option>
+                    {% for department in departments %}
+                    <option value="{{ department.id }}" {% if department.id|stringformat:"s" == selected_department_id %}selected{% endif %}>{{ department.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Appraisal Cycle</label>
+                <select name="cycle" class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+                    <option value="">Active cycle</option>
+                    {% for cycle in cycles %}
+                    <option value="{{ cycle.id }}" {% if cycle.id|stringformat:"s" == selected_cycle_id %}selected{% endif %}>{{ cycle.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Appraisal Status</label>
+                <select name="status" class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+                    <option value="">All statuses</option>
+                    <option value="NO_RECORD" {% if selected_status == 'NO_RECORD' %}selected{% endif %}>No appraisal record</option>
+                    {% for value,label in appraisal_status_choices %}
+                    <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Role</label>
+                <select name="role" class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+                    <option value="">All roles</option>
+                    {% for value,label in role_choices %}
+                    <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Search</label>
+                <input type="search" name="q" value="{{ search_q }}" placeholder="Name, email, ID..." class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm">
+            </div>
+        </div>
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Showing {{ staff|length }} staff{% if selected_cycle %} for {{ selected_cycle.name }}{% endif %}.
+            </p>
+            <div class="flex items-center gap-2">
+                <a href="{% url 'hr_admin:staff_list' %}" class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Reset</a>
+                <button type="submit" class="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition">Apply Filters</button>
+            </div>
+        </div>
+    </form>
+
     <div class="bg-white dark:bg-slate-900 shadow-sm rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
@@ -24,7 +88,9 @@
                     <tr>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Staff Member</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID & Role</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Branch</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Department</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Appraisal Status</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Supervisor</th>
                         <th scope="col" class="relative px-6 py-3"><span class="sr-only">Actions</span></th>
                     </tr>
@@ -55,9 +121,30 @@
                                 </span>
                             </div>
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">
+                            {% for branch in person.branches.all %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 mr-1 mb-1">{{ branch.name }}</span>
+                            {% empty %}
+                                <span class="text-slate-400">-</span>
+                            {% endfor %}
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-slate-900 dark:text-white">{{ person.department.name|default:"-" }}</div>
                             <div class="text-sm text-slate-500">{{ person.designation|default:"-" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if person.selected_cycle_appraisal %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                {% if person.selected_cycle_appraisal.status == 'APPROVED' or person.selected_cycle_appraisal.status == 'STAFF_ACKNOWLEDGED' %}bg-emerald-100 text-emerald-800
+                                {% elif person.selected_cycle_appraisal.status == 'SUBMITTED' or person.selected_cycle_appraisal.status == 'AWAITING_STEP_REVIEW' %}bg-blue-100 text-blue-800
+                                {% elif person.selected_cycle_appraisal.status == 'RETURNED_TO_STAFF' or person.selected_cycle_appraisal.status == 'RETURNED_TO_REVIEWER' %}bg-rose-100 text-rose-800
+                                {% elif person.selected_cycle_appraisal.status == 'DRAFT' or person.selected_cycle_appraisal.status == 'NOT_STARTED' %}bg-amber-100 text-amber-800
+                                {% else %}bg-slate-100 text-slate-800{% endif %}">
+                                {{ person.selected_cycle_appraisal.get_status_display }}
+                            </span>
+                            {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-slate-100 text-slate-700">No record</span>
+                            {% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                             {{ person.supervisor.full_name|default:"None" }}
@@ -68,7 +155,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
+                        <td colspan="7" class="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
                             No staff members found.
                         </td>
                     </tr>
