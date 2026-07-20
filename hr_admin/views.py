@@ -782,13 +782,30 @@ def api_bulk_assign(request, cycle_pk):
 
             count = 0
             for appraisal in appraisals_qs:
-                # Find the assignment in this appraisal's active process that matches the target role
-                matching_assignment = appraisal.approval_assignments.filter(
-                    step__role_required=target_role
-                ).select_related('step').first()
-
-                if not matching_assignment:
+                active_process = appraisal.active_process
+                if not active_process:
                     continue
+
+                # Use the exact visible target step for general-process rows. If the
+                # appraisal has an override process, resolve by step number + role
+                # inside that active process instead of accidentally updating a stale
+                # assignment from another cloned process.
+                active_step = None
+                if target_step.process_id == active_process.id:
+                    active_step = target_step
+                else:
+                    active_step = active_process.steps.filter(
+                        step_number=target_step.step_number,
+                        role_required=target_role,
+                    ).first()
+
+                if not active_step:
+                    continue
+
+                matching_assignment, _ = AppraisalApprovalAssignment.objects.get_or_create(
+                    appraisal=appraisal,
+                    step=active_step,
+                )
 
                 if logic in dynamic_logic_values:
                     approver = _resolve_dynamic_approver(appraisal, logic)

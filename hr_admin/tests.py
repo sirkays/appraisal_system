@@ -291,6 +291,22 @@ class BulkApproverAssignmentTests(TestCase):
             appraisal=self.appraisal,
             step=self.director_step,
         )
+        stale_process = ApprovalProcess.objects.create(
+            cycle=self.cycle,
+            name="Stale Supervisor Process",
+            is_general=False,
+            created_by=self.hr,
+        )
+        self.stale_hod_step = ApprovalStep.objects.create(
+            process=stale_process,
+            step_number=1,
+            label="Stale HOD Review",
+            role_required=ApprovalStep.HOD,
+        )
+        self.stale_hod_assignment = AppraisalApprovalAssignment.objects.create(
+            appraisal=self.appraisal,
+            step=self.stale_hod_step,
+        )
         self.other_department = Department.objects.create(name="Finance", code="BFIN")
         self.other_staff = CustomUser.objects.create_user(
             username="bulk_other_staff",
@@ -326,6 +342,8 @@ class BulkApproverAssignmentTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.hod_assignment.refresh_from_db()
         self.assertEqual(self.hod_assignment.approver, self.hod)
+        self.stale_hod_assignment.refresh_from_db()
+        self.assertIsNone(self.stale_hod_assignment.approver)
 
     def test_bulk_assign_hod_ignores_stale_supervisor_logic_for_hod_step(self):
         self.client.login(username="bulk_hr_admin", password="pass12345")
