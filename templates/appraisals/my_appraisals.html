@@ -160,7 +160,16 @@
 
                         <!-- Actions -->
                         <td class="px-6 py-4 text-right">
-                            {% if appraisal.cycle.status == 'ACTIVE' %}
+                            {% if appraisal.status == 'APPROVED' or appraisal.status == 'STAFF_ACKNOWLEDGED' or appraisal.status == 'ARCHIVED' %}
+                            <a href="{% url 'appraisals:appraisal_result' appraisal.id %}"
+                               class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold
+                                      bg-indigo-600 hover:bg-indigo-500 text-white transition-colors shadow-sm">
+                                View Result
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </a>
+                            {% elif appraisal.cycle.status == 'ACTIVE' %}
                             <a href="{% url 'appraisals:self_appraisal_form_pk' appraisal.id %}"
                                class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold
                                       bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-sm">
@@ -214,7 +223,12 @@
                             {% if appraisal.overall_self_score %}{{ appraisal.overall_self_score }}/{{ appraisal.cycle.scoring_scale }}{% else %}—{% endif %}
                         </span>
                     </div>
-                    {% if appraisal.cycle.status == 'ACTIVE' %}
+                    {% if appraisal.status == 'APPROVED' or appraisal.status == 'STAFF_ACKNOWLEDGED' or appraisal.status == 'ARCHIVED' %}
+                    <a href="{% url 'appraisals:appraisal_result' appraisal.id %}"
+                       class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">
+                        View Result
+                    </a>
+                    {% elif appraisal.cycle.status == 'ACTIVE' %}
                     <a href="{% url 'appraisals:self_appraisal_form_pk' appraisal.id %}"
                        class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">
                         {% if appraisal.status == 'DRAFT' or appraisal.status == 'NOT_STARTED' %}Continue{% else %}View{% endif %}

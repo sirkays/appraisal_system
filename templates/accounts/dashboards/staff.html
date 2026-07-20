@@ -212,14 +212,16 @@
                                      {% else %}bg-slate-400{% endif %}"></span>
                         <span class="text-sm text-slate-500 dark:text-slate-400">Status: <strong class="text-slate-700 dark:text-slate-300 font-semibold">{{ status_display }}</strong></span>
                     </div>
-                    <a href="{% if appraisal %}{% url 'appraisals:self_appraisal_form_pk' appraisal.id %}{% else %}{% url 'appraisals:self_appraisal_form' %}{% endif %}"
+                    <a href="{% if appraisal.status == 'APPROVED' or appraisal.status == 'STAFF_ACKNOWLEDGED' or appraisal.status == 'ARCHIVED' %}{% url 'appraisals:appraisal_result' appraisal.id %}{% elif appraisal %}{% url 'appraisals:self_appraisal_form_pk' appraisal.id %}{% else %}{% url 'appraisals:self_appraisal_form' %}{% endif %}"
                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
                               bg-gradient-to-r from-emerald-600 to-teal-655
                               hover:from-emerald-500 hover:to-teal-500
                               text-white shadow-md shadow-emerald-500/25
                               hover:shadow-lg hover:shadow-emerald-500/30
                               transition-all duration-200 group-hover:gap-3">
-                        {% if appraisal.status == 'SUBMITTED' or appraisal.status == 'APPROVED' %}
+                        {% if appraisal.status == 'APPROVED' or appraisal.status == 'STAFF_ACKNOWLEDGED' or appraisal.status == 'ARCHIVED' %}
+                            View Final Result
+                        {% elif appraisal.status == 'SUBMITTED' or appraisal.status == 'AWAITING_STEP_REVIEW' or appraisal.status == 'RETURNED_TO_REVIEWER' %}
                             View Self-Appraisal
                         {% else %}
                             Start Self-Appraisal

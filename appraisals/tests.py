@@ -331,3 +331,31 @@ class MyAppraisalsStatsTests(TestCase):
         self.assertEqual(response.context["submitted_count"], 0)
         self.assertEqual(response.context["approved_count"], 0)
         self.assertContains(response, ">0</p>", html=False)
+
+    def test_approved_item_links_to_result_page(self):
+        staff = CustomUser.objects.create_user(
+            username="staff_final_result",
+            password="pass12345",
+            staff_id="STF-FINAL-001",
+            role=CustomUser.STAFF,
+        )
+        cycle = AppraisalCycle.objects.create(
+            name="Final Result Review",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            status=AppraisalCycle.ACTIVE,
+            created_by=staff,
+        )
+        appraisal = Appraisal.objects.create(
+            cycle=cycle,
+            staff=staff,
+            status=Appraisal.APPROVED,
+            final_score=90,
+        )
+
+        self.client.login(username="staff_final_result", password="pass12345")
+        response = self.client.get(reverse("appraisals:my_appraisals"))
+
+        self.assertContains(response, "View Result")
+        self.assertContains(response, reverse("appraisals:appraisal_result", args=[appraisal.id]))
+        self.assertNotContains(response, reverse("appraisals:self_appraisal_form_pk", args=[appraisal.id]))
