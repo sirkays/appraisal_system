@@ -556,7 +556,8 @@ def assign_approvers(request, cycle_pk):
 
     from django.db.models import Case, When, Value, IntegerField
     steps = general_process.steps.all()
-    appraisals = cycle.appraisals.select_related(
+    intended_staff = _cycle_target_staff_queryset(cycle)
+    appraisals = cycle.appraisals.filter(staff__in=intended_staff).select_related(
         'staff', 'staff__department', 'override_process'
     ).annotate(
         role_order=Case(
@@ -576,9 +577,13 @@ def assign_approvers(request, cycle_pk):
 
     all_active_users = CustomUser.objects.filter(is_active=True)
     if cycle.branch:
+        intended_department_ids = intended_staff.exclude(
+            department__isnull=True
+        ).values_list('department_id', flat=True)
         all_active_users = all_active_users.filter(
             Q(branches=cycle.branch) |
             Q(department__in=cycle.target_departments.all()) |
+            Q(department_id__in=intended_department_ids) |
             Q(id__in=cycle.target_staff.values_list('id', flat=True))
         ).distinct()
 
@@ -607,6 +612,31 @@ def assign_approvers(request, cycle_pk):
         'all_active_users': all_active_users.order_by('last_name', 'first_name'),
     }
     return render(request, 'hr_admin/assign_approvers.html', context)
+
+
+def _cycle_target_staff_queryset(cycle):
+    """Return active staff intended for a cycle based on its target settings."""
+    base_staff = CustomUser.objects.filter(
+        is_active=True,
+        role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE],
+    )
+
+    target_departments = cycle.target_departments.all()
+    target_staff = cycle.target_staff.all()
+
+    if target_departments.exists() or target_staff.exists():
+        intended_staff = CustomUser.objects.none()
+        if target_departments.exists():
+            intended_staff = intended_staff | base_staff.filter(department__in=target_departments)
+        if target_staff.exists():
+            intended_staff = intended_staff | base_staff.filter(id__in=target_staff.values_list('id', flat=True))
+        intended_staff = intended_staff.distinct()
+    else:
+        intended_staff = base_staff
+        if cycle.branch:
+            intended_staff = intended_staff.filter(branches=cycle.branch).distinct()
+
+    return intended_staff.exclude(id__in=cycle.excluded_staff.values_list('id', flat=True))
 
 
 def _find_supervisor_chain_user(staff, role):
@@ -719,6 +749,15 @@ def api_bulk_assign(request, cycle_pk):
             target_role = target_step.role_required
 
             dynamic_logic_values = ('supervisor', 'hod', 'director', 'hr_admin')
+            default_dynamic_logic_by_role = {
+                ApprovalStep.SUPERVISOR: 'supervisor',
+                ApprovalStep.HOD: 'hod',
+                ApprovalStep.DIRECTORATE: 'director',
+                ApprovalStep.HR_ADMIN: 'hr_admin',
+            }
+
+            if logic in dynamic_logic_values:
+                logic = default_dynamic_logic_by_role.get(target_role, logic)
 
             # Resolve the specific person once if logic is a user ID
             specific_user = None
@@ -730,7 +769,9 @@ def api_bulk_assign(request, cycle_pk):
 
             # Get all appraisals in this cycle (filtered by visible if appraisal_ids given)
             from appraisals.models import Appraisal
-            appraisals_qs = Appraisal.objects.filter(cycle_id=cycle_pk).select_related(
+            cycle = get_object_or_404(AppraisalCycle, pk=cycle_pk)
+            intended_staff = _cycle_target_staff_queryset(cycle)
+            appraisals_qs = Appraisal.objects.filter(cycle=cycle, staff__in=intended_staff).select_related(
                 'cycle', 'cycle__branch', 'staff', 'staff__department', 'staff__department__hod',
                 'staff__supervisor', 'staff__supervisor__supervisor',
                 'override_process'

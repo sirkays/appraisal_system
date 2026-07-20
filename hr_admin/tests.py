@@ -291,6 +291,24 @@ class BulkApproverAssignmentTests(TestCase):
             appraisal=self.appraisal,
             step=self.director_step,
         )
+        self.other_department = Department.objects.create(name="Finance", code="BFIN")
+        self.other_staff = CustomUser.objects.create_user(
+            username="bulk_other_staff",
+            password="pass12345",
+            staff_id="BULK-OTH-001",
+            role=CustomUser.STAFF,
+            first_name="Other",
+            last_name="Staff",
+            department=self.other_department,
+        )
+        self.other_appraisal = Appraisal.objects.create(
+            cycle=self.cycle,
+            staff=self.other_staff,
+        )
+        self.other_hod_assignment = AppraisalApprovalAssignment.objects.create(
+            appraisal=self.other_appraisal,
+            step=self.hod_step,
+        )
 
     def test_bulk_assign_hod_uses_department_hod(self):
         self.client.login(username="bulk_hr_admin", password="pass12345")
@@ -300,6 +318,23 @@ class BulkApproverAssignmentTests(TestCase):
             data=json.dumps({
                 "step_id": self.hod_step.id,
                 "logic": "hod",
+                "appraisal_ids": [self.appraisal.id],
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.hod_assignment.refresh_from_db()
+        self.assertEqual(self.hod_assignment.approver, self.hod)
+
+    def test_bulk_assign_hod_ignores_stale_supervisor_logic_for_hod_step(self):
+        self.client.login(username="bulk_hr_admin", password="pass12345")
+
+        response = self.client.post(
+            reverse("hr_admin:api_bulk_assign", args=[self.cycle.id]),
+            data=json.dumps({
+                "step_id": self.hod_step.id,
+                "logic": "supervisor",
                 "appraisal_ids": [self.appraisal.id],
             }),
             content_type="application/json",
@@ -332,3 +367,24 @@ class BulkApproverAssignmentTests(TestCase):
         response = self.client.get(reverse("hr_admin:assign_approvers", args=[self.cycle.id]))
 
         self.assertContains(response, "HOD Audit")
+        self.assertContains(response, "bulk_staff")
+        self.assertNotContains(response, "Other Staff")
+
+    def test_bulk_assign_only_updates_targeted_appraisals(self):
+        self.client.login(username="bulk_hr_admin", password="pass12345")
+
+        response = self.client.post(
+            reverse("hr_admin:api_bulk_assign", args=[self.cycle.id]),
+            data=json.dumps({
+                "step_id": self.hod_step.id,
+                "logic": "hod",
+                "appraisal_ids": [self.appraisal.id, self.other_appraisal.id],
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.hod_assignment.refresh_from_db()
+        self.other_hod_assignment.refresh_from_db()
+        self.assertEqual(self.hod_assignment.approver, self.hod)
+        self.assertIsNone(self.other_hod_assignment.approver)
