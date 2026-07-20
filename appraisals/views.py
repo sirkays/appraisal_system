@@ -143,6 +143,10 @@ def _advance_appraisal(appraisal, current_assignment, actioning_user):
         # Notify the next step's assigned approver
         next_assignment = appraisal.approval_assignments.filter(step=next_step).first()
         if next_assignment and next_assignment.approver:
+            next_assignment.status = AppraisalApprovalAssignment.PENDING
+            next_assignment.actioned_at = None
+            next_assignment.save(update_fields=['status', 'actioned_at'])
+
             _send_notification(
                 next_assignment.approver, actioning_user,
                 Notification.APPRAISAL_REVIEWED,
@@ -373,6 +377,11 @@ def self_appraisal_form(request, pk=None):
                     first_assignment = appraisal.approval_assignments.filter(
                         step__step_number=first_step.step_number
                     ).first()
+                    if first_assignment:
+                        first_assignment.status = AppraisalApprovalAssignment.PENDING
+                        first_assignment.actioned_at = None
+                        first_assignment.save(update_fields=['status', 'actioned_at'])
+
                     if first_assignment and first_assignment.approver:
                         from notifications.models import Notification
                         _send_notification(

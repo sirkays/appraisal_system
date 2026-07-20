@@ -147,3 +147,60 @@ class ReturnReasonVisibilityTests(TestCase):
         self.assertContains(response, "Return Reason")
         self.assertContains(response, "Supervisor Review")
         self.assertContains(response, "Staff should add measurable achievements.")
+
+    def test_staff_resubmit_requeues_step_one_for_supervisor(self):
+        self.appraisal.status = Appraisal.RETURNED_TO_STAFF
+        self.appraisal.current_step_number = 0
+        self.appraisal.supervisor_return_notes = "Please upload the missing document."
+        self.appraisal.save(update_fields=["status", "current_step_number", "supervisor_return_notes"])
+        self.supervisor_assignment.status = AppraisalApprovalAssignment.RETURNED
+        self.supervisor_assignment.comments = "Please upload the missing document."
+        self.supervisor_assignment.save(update_fields=["status", "comments"])
+
+        self.client.login(username="staff", password="pass12345")
+        response = self.client.post(
+            reverse("appraisals:self_appraisal_form_pk", args=[self.appraisal.id]),
+            {"action": "submit"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.appraisal.refresh_from_db()
+        self.supervisor_assignment.refresh_from_db()
+        self.assertEqual(self.appraisal.status, Appraisal.SUBMITTED)
+        self.assertEqual(self.appraisal.current_step_number, 1)
+        self.assertEqual(self.supervisor_assignment.status, AppraisalApprovalAssignment.PENDING)
+        self.assertIsNone(self.supervisor_assignment.actioned_at)
+
+        self.client.logout()
+        self.client.login(username="supervisor", password="pass12345")
+        response = self.client.get(reverse("appraisals:step_review", args=[self.appraisal.id]))
+        self.assertNotContains(response, "This appraisal is not currently in your action queue.")
+
+    def test_reapproval_requeues_returning_higher_step_reviewer(self):
+        self.appraisal.status = Appraisal.RETURNED_TO_REVIEWER
+        self.appraisal.current_step_number = 1
+        self.appraisal.save(update_fields=["status", "current_step_number"])
+        self.supervisor_assignment.status = AppraisalApprovalAssignment.PENDING
+        self.supervisor_assignment.save(update_fields=["status"])
+        self.hod_assignment.status = AppraisalApprovalAssignment.RETURNED
+        self.hod_assignment.comments = "Please clarify the KPI evidence before approval."
+        self.hod_assignment.save(update_fields=["status", "comments"])
+
+        self.client.login(username="supervisor", password="pass12345")
+        response = self.client.post(
+            reverse("appraisals:step_review", args=[self.appraisal.id]),
+            {"action": "approve"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.appraisal.refresh_from_db()
+        self.hod_assignment.refresh_from_db()
+        self.assertEqual(self.appraisal.status, Appraisal.AWAITING_STEP_REVIEW)
+        self.assertEqual(self.appraisal.current_step_number, 2)
+        self.assertEqual(self.hod_assignment.status, AppraisalApprovalAssignment.PENDING)
+        self.assertIsNone(self.hod_assignment.actioned_at)
+
+        self.client.logout()
+        self.client.login(username="hod", password="pass12345")
+        response = self.client.get(reverse("appraisals:step_review", args=[self.appraisal.id]))
+        self.assertNotContains(response, "This appraisal is not currently in your action queue.")
