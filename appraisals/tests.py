@@ -253,6 +253,44 @@ class ReturnReasonVisibilityTests(TestCase):
         self.assertContains(response, "Supervisor Review")
         self.assertContains(response, "Supervisor recommends approval after reviewing the evidence.")
 
+    def test_result_page_hides_empty_form_sections(self):
+        empty_section = FormSection.objects.create(
+            cycle=self.cycle,
+            name="Section A: To Be Completed by Appraisee",
+            description="Complete all fields below before submitting your appraisal.",
+            section_weight=0,
+            order=1,
+        )
+        populated_section = FormSection.objects.create(
+            cycle=self.cycle,
+            name="Section B: Quantitative Appraisal",
+            description="Score each KPI.",
+            section_weight=100,
+            order=2,
+        )
+        field = FormField.objects.create(
+            section=populated_section,
+            label="Revenue Target Achieved",
+            field_type=FormField.SCORE,
+            filled_by=FormField.APPRAISEE,
+            max_score=100,
+            order=1,
+        )
+        FormFieldResponse.objects.create(
+            appraisal=self.appraisal,
+            field=field,
+            response_type=FormFieldResponse.PRIMARY,
+            score=80,
+            responded_by=self.staff,
+        )
+
+        self.client.login(username="hod", password="pass12345")
+        response = self.client.get(reverse("appraisals:appraisal_result", args=[self.appraisal.id]))
+
+        self.assertNotContains(response, empty_section.name)
+        self.assertContains(response, populated_section.name)
+        self.assertContains(response, "Revenue Target Achieved")
+
 
 class MyAppraisalsStatsTests(TestCase):
     def test_summary_counts_are_scoped_to_logged_in_user(self):

@@ -824,7 +824,8 @@ def appraisal_result(request, pk):
                 'response': primary_resp,
                 'mode_b_responses': mode_b_responses,
             })
-        result_sections.append({'section': section, 'fields': fields_data})
+        if fields_data:
+            result_sections.append({'section': section, 'fields': fields_data})
 
     context = {
         'appraisal': appraisal,
