@@ -260,6 +260,15 @@ class BulkApproverAssignmentTests(TestCase):
         )
         self.cycle.target_departments.add(self.department)
         self.branch.members.add(self.hr, self.supervisor, self.staff)
+        self.branch_only_staff = CustomUser.objects.create_user(
+            username="bulk_branch_only",
+            password="pass12345",
+            staff_id="BULK-BRN-001",
+            role=CustomUser.HOD,
+            first_name="Branch",
+            last_name="Only",
+        )
+        self.branch.members.add(self.branch_only_staff)
         process = ApprovalProcess.objects.create(
             cycle=self.cycle,
             name="Standard Review",
@@ -387,6 +396,7 @@ class BulkApproverAssignmentTests(TestCase):
         self.assertContains(response, "HOD Audit")
         self.assertContains(response, "bulk_staff")
         self.assertNotContains(response, "Other Staff")
+        self.assertNotContains(response, "Branch Only")
 
     def test_bulk_assign_only_updates_targeted_appraisals(self):
         self.client.login(username="bulk_hr_admin", password="pass12345")
