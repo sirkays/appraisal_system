@@ -15,6 +15,7 @@ from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.utils.text import slugify
 from django.utils import timezone
+from datetime import datetime, timezone as dt_timezone
 from decimal import Decimal, InvalidOperation
 from accounts.models import CustomUser
 from .models import (
@@ -96,6 +97,31 @@ def _build_appraisal_result_context(request, appraisal):
             'REVIEWER_COMMENT': FormFieldResponse.REVIEWER_COMMENT,
         },
     }
+
+
+def _appraisal_recency_timestamp(appraisal):
+    """Best timestamp for ordering appraisals by recent activity/submission."""
+    if not appraisal:
+        return datetime.min.replace(tzinfo=dt_timezone.utc)
+    return appraisal.self_submitted_at or appraisal.updated_at or appraisal.created_at
+
+
+def _team_appraisal_sort_key(item):
+    """Sort reviewer team rows with recent actionable submissions first."""
+    appraisal = item.get('appraisal')
+    if not appraisal:
+        return (4, 0, item['member'].get_full_name().lower())
+
+    if appraisal.status in [Appraisal.SUBMITTED, Appraisal.AWAITING_STEP_REVIEW, Appraisal.RETURNED_TO_REVIEWER]:
+        priority = 0
+    elif appraisal.status in [Appraisal.APPROVED, Appraisal.STAFF_ACKNOWLEDGED, Appraisal.ARCHIVED]:
+        priority = 1
+    elif appraisal.status == Appraisal.RETURNED_TO_STAFF:
+        priority = 2
+    else:
+        priority = 3
+
+    return (priority, -_appraisal_recency_timestamp(appraisal).timestamp(), item['member'].get_full_name().lower())
 
 def _calculate_weighted_score(appraisal, score_type='self'):
     """
@@ -918,6 +944,10 @@ def my_review_queue(request):
         if a.appraisal.current_step_number == a.step.step_number and
            a.appraisal.status in ACTIONABLE_STATUSES
     ]
+    current_pending.sort(
+        key=lambda assignment: _appraisal_recency_timestamp(assignment.appraisal),
+        reverse=True,
+    )
 
     # All past assignments (reviewed history)
     past_assignments = AppraisalApprovalAssignment.objects.filter(
@@ -997,6 +1027,8 @@ def team_list(request):
                 Appraisal.APPROVED, Appraisal.STAFF_ACKNOWLEDGED, Appraisal.ARCHIVED
             ]
         ]
+
+    team_data.sort(key=_team_appraisal_sort_key)
 
     context = {
         'team_data': team_data,

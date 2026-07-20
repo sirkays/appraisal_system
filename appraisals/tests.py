@@ -1,8 +1,10 @@
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import CustomUser
 from departments.models import Department
+from datetime import timedelta
 from .models import (
     Appraisal,
     AppraisalApprovalAssignment,
@@ -385,3 +387,109 @@ class MyAppraisalsStatsTests(TestCase):
         self.assertContains(response, "View Result")
         self.assertContains(response, reverse("appraisals:appraisal_result", args=[appraisal.id]))
         self.assertNotContains(response, reverse("appraisals:self_appraisal_form_pk", args=[appraisal.id]))
+
+
+class ReviewerAppraisalOrderingTests(TestCase):
+    def setUp(self):
+        self.supervisor = CustomUser.objects.create_user(
+            username="reviewer_order",
+            password="pass12345",
+            staff_id="SUP-ORDER-001",
+            role=CustomUser.SUPERVISOR,
+            first_name="Sarah",
+            last_name="Supervisor",
+        )
+        self.cycle = AppraisalCycle.objects.create(
+            name="Ordering Review",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            status=AppraisalCycle.ACTIVE,
+            created_by=self.supervisor,
+        )
+        self.process = ApprovalProcess.objects.create(
+            cycle=self.cycle,
+            name="Supervisor Review Process",
+            is_general=True,
+            created_by=self.supervisor,
+        )
+        self.step = ApprovalStep.objects.create(
+            process=self.process,
+            step_number=1,
+            label="Supervisor Review",
+            role_required=ApprovalStep.SUPERVISOR,
+        )
+
+        self.old_staff = CustomUser.objects.create_user(
+            username="old_submission",
+            password="pass12345",
+            staff_id="OLD-001",
+            role=CustomUser.STAFF,
+            first_name="Old",
+            last_name="Submission",
+            supervisor=self.supervisor,
+        )
+        self.new_staff = CustomUser.objects.create_user(
+            username="new_submission",
+            password="pass12345",
+            staff_id="NEW-001",
+            role=CustomUser.STAFF,
+            first_name="New",
+            last_name="Submission",
+            supervisor=self.supervisor,
+        )
+        self.not_started_staff = CustomUser.objects.create_user(
+            username="not_started_order",
+            password="pass12345",
+            staff_id="NST-001",
+            role=CustomUser.STAFF,
+            first_name="Not",
+            last_name="Started",
+            supervisor=self.supervisor,
+        )
+
+        now = timezone.now()
+        self.old_appraisal = Appraisal.objects.create(
+            cycle=self.cycle,
+            staff=self.old_staff,
+            status=Appraisal.SUBMITTED,
+            current_step_number=1,
+            self_submitted_at=now - timedelta(days=2),
+        )
+        self.new_appraisal = Appraisal.objects.create(
+            cycle=self.cycle,
+            staff=self.new_staff,
+            status=Appraisal.SUBMITTED,
+            current_step_number=1,
+            self_submitted_at=now,
+        )
+        self.not_started_appraisal = Appraisal.objects.create(
+            cycle=self.cycle,
+            staff=self.not_started_staff,
+            status=Appraisal.NOT_STARTED,
+        )
+
+        for appraisal in [self.old_appraisal, self.new_appraisal]:
+            AppraisalApprovalAssignment.objects.create(
+                appraisal=appraisal,
+                step=self.step,
+                approver=self.supervisor,
+                status=AppraisalApprovalAssignment.PENDING,
+            )
+
+    def test_team_appraisals_show_recent_submissions_first(self):
+        self.client.login(username="reviewer_order", password="pass12345")
+        response = self.client.get(reverse("appraisals:team_list"))
+
+        ordered_names = [item["member"].username for item in response.context["team_data"]]
+
+        self.assertEqual(ordered_names[0], "new_submission")
+        self.assertEqual(ordered_names[1], "old_submission")
+        self.assertEqual(ordered_names[-1], "not_started_order")
+
+    def test_review_queue_shows_recent_pending_submission_first(self):
+        self.client.login(username="reviewer_order", password="pass12345")
+        response = self.client.get(reverse("appraisals:review_queue"))
+
+        ordered_staff = [assignment.appraisal.staff.username for assignment in response.context["current_pending"]]
+
+        self.assertEqual(ordered_staff, ["new_submission", "old_submission"])
