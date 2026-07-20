@@ -50,9 +50,13 @@
                         <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
                             {% if cycle.status == 'ACTIVE' %}bg-green-100 text-green-800
                             {% elif cycle.status == 'DRAFT' %}bg-yellow-100 text-yellow-800
+                            {% elif cycle.status == 'ARCHIVED' %}bg-slate-200 text-slate-700
                             {% else %}bg-gray-100 text-gray-800{% endif %}">
                             {{ cycle.get_status_display }}
                         </span>
+                        {% if cycle.archive_delete_available_at %}
+                        <div class="mt-1 text-[11px] text-slate-500">Delete available {{ cycle.archive_delete_available_at|date:"M d, Y" }}</div>
+                        {% endif %}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {{ cycle.start_date|date:"M d, Y"|default:"TBD" }} - {{ cycle.end_date|date:"M d, Y"|default:"TBD" }}
@@ -67,6 +71,17 @@
                             <form method="post" action="{% url 'hr_admin:cycle_clone' cycle.id %}" class="inline" onsubmit="return confirm('Clone this cycle setup? Appraisal submissions will not be copied.');">
                                 {% csrf_token %}
                                 <button type="submit" class="text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">Clone</button>
+                            </form>
+                            <form method="post" action="{% url 'hr_admin:cycle_delete' cycle.id %}" class="inline"
+                                  onsubmit="return confirm('{% if cycle.can_be_deleted %}Delete this appraisal cycle permanently?{% elif cycle.status == 'ARCHIVED' %}This archived cycle cannot be deleted until its 30-day retention period ends.{% else %}This cycle has submitted appraisals, so it will be archived for 30 days before deletion is allowed.{% endif %}');">
+                                {% csrf_token %}
+                                {% if cycle.can_be_deleted %}
+                                <button type="submit" class="text-rose-600 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors">Delete</button>
+                                {% elif cycle.status != 'ARCHIVED' %}
+                                <button type="submit" class="text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors">Archive</button>
+                                {% else %}
+                                <button type="submit" class="text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg cursor-not-allowed" disabled>Delete Locked</button>
+                                {% endif %}
                             </form>
                         </div>
                     </td>

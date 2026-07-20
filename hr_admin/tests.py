@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 import json
 
 from accounts.models import CustomUser
@@ -201,6 +204,66 @@ class AppraisalCycleCloneTests(TestCase):
         cloned_appraisal = Appraisal.objects.get(cycle=cloned, staff=self.staff)
         self.assertEqual(cloned_appraisal.status, Appraisal.NOT_STARTED)
         self.assertEqual(cloned_appraisal.approval_assignments.count(), 1)
+
+
+class AppraisalCycleLifecycleTests(TestCase):
+    def setUp(self):
+        self.hr = CustomUser.objects.create_user(
+            username="cycle_lifecycle_hr",
+            password="pass12345",
+            staff_id="LIFE-HR-001",
+            role=CustomUser.HR_ADMIN,
+        )
+        self.staff = CustomUser.objects.create_user(
+            username="cycle_lifecycle_staff",
+            password="pass12345",
+            staff_id="LIFE-STF-001",
+            role=CustomUser.STAFF,
+        )
+
+    def make_cycle(self, name="Lifecycle Cycle"):
+        return AppraisalCycle.objects.create(
+            name=name,
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            status=AppraisalCycle.ACTIVE,
+            created_by=self.hr,
+        )
+
+    def test_cycle_without_submitted_appraisals_can_be_deleted(self):
+        cycle = self.make_cycle()
+        Appraisal.objects.create(cycle=cycle, staff=self.staff, status=Appraisal.NOT_STARTED)
+        self.client.login(username="cycle_lifecycle_hr", password="pass12345")
+
+        response = self.client.post(reverse("hr_admin:cycle_delete", args=[cycle.id]))
+
+        self.assertRedirects(response, reverse("hr_admin:cycle_list"))
+        self.assertFalse(AppraisalCycle.objects.filter(id=cycle.id).exists())
+
+    def test_cycle_with_submitted_appraisals_is_archived_first(self):
+        cycle = self.make_cycle()
+        Appraisal.objects.create(cycle=cycle, staff=self.staff, status=Appraisal.SUBMITTED)
+        self.client.login(username="cycle_lifecycle_hr", password="pass12345")
+
+        response = self.client.post(reverse("hr_admin:cycle_delete", args=[cycle.id]))
+
+        self.assertRedirects(response, reverse("hr_admin:cycle_list"))
+        cycle.refresh_from_db()
+        self.assertEqual(cycle.status, AppraisalCycle.ARCHIVED)
+        self.assertIsNotNone(cycle.archived_at)
+
+    def test_archived_submitted_cycle_can_be_deleted_after_30_days(self):
+        cycle = self.make_cycle()
+        cycle.status = AppraisalCycle.ARCHIVED
+        cycle.archived_at = timezone.now() - timedelta(days=31)
+        cycle.save(update_fields=["status", "archived_at"])
+        Appraisal.objects.create(cycle=cycle, staff=self.staff, status=Appraisal.SUBMITTED)
+        self.client.login(username="cycle_lifecycle_hr", password="pass12345")
+
+        response = self.client.post(reverse("hr_admin:cycle_delete", args=[cycle.id]))
+
+        self.assertRedirects(response, reverse("hr_admin:cycle_list"))
+        self.assertFalse(AppraisalCycle.objects.filter(id=cycle.id).exists())
 
 
 class BulkApproverAssignmentTests(TestCase):

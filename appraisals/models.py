@@ -6,8 +6,11 @@ including appraisal cycles, KPI and competency frameworks, scoring, and
 fully dynamic multi-step approval processes (general per-cycle and per-staff overrides).
 """
 
+from datetime import timedelta
+
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 
 class AppraisalCycle(models.Model):
@@ -33,11 +36,13 @@ class AppraisalCycle(models.Model):
     DRAFT = 'DRAFT'
     ACTIVE = 'ACTIVE'
     CLOSED = 'CLOSED'
+    ARCHIVED = 'ARCHIVED'
 
     STATUS_CHOICES = [
         (DRAFT, 'Draft'),
         (ACTIVE, 'Active'),
         (CLOSED, 'Closed'),
+        (ARCHIVED, 'Archived'),
     ]
 
     # --- Scoring scale choices ---
@@ -96,6 +101,7 @@ class AppraisalCycle(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-start_date']
@@ -109,6 +115,28 @@ class AppraisalCycle(models.Model):
     def is_active(self):
         """Return True if the cycle is currently active."""
         return self.status == self.ACTIVE
+
+    @property
+    def has_submitted_appraisals(self):
+        """Return True once any appraisal in this cycle has been submitted or reviewed."""
+        return (
+            self.appraisals.exclude(status__in=['NOT_STARTED', 'DRAFT']).exists()
+            or self.appraisals.filter(self_submitted_at__isnull=False).exists()
+        )
+
+    @property
+    def can_be_deleted(self):
+        """Cycles are deletable before submission, or 30 days after archival."""
+        if not self.has_submitted_appraisals:
+            return True
+        return self.status == self.ARCHIVED and self.archived_at and timezone.now() >= self.archived_at + timedelta(days=30)
+
+    @property
+    def archive_delete_available_at(self):
+        """Return when an archived submitted cycle becomes deletable."""
+        if self.status == self.ARCHIVED and self.archived_at and self.has_submitted_appraisals:
+            return self.archived_at + timedelta(days=30)
+        return None
 
     @property
     def general_approval_process(self):

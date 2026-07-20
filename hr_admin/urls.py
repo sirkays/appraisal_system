@@ -10,6 +10,7 @@ urlpatterns = [
     path('cycles/', views.cycle_list, name='cycle_list'),
     path('cycles/create/', views.cycle_create, name='cycle_create'),
     path('cycles/<int:pk>/clone/', views.cycle_clone, name='cycle_clone'),
+    path('cycles/<int:pk>/delete/', views.cycle_delete, name='cycle_delete'),
     path('cycles/<int:pk>/', views.cycle_detail, name='cycle_detail'),
     path('cycles/<int:pk>/edit/', views.cycle_edit, name='cycle_edit'),
     path('cycles/<int:pk>/settings/', views.cycle_settings, name='cycle_settings'),

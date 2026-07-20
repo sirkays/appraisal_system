@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db import transaction
+from django.utils import timezone
 from appraisals.models import (
     AppraisalCycle, KPICategory, CompetencyCategory, NarrativeField,
     ApprovalProcess, ApprovalStep, AppraisalApprovalAssignment, Appraisal,
@@ -230,6 +231,45 @@ def cycle_clone(request, pk):
         f"Cycle '{source_cycle.name}' was cloned as '{cloned_cycle.name}'. Review the settings before activating it."
     )
     return redirect('hr_admin:cycle_edit', pk=cloned_cycle.pk)
+
+
+@hr_required
+def cycle_delete(request, pk):
+    """Delete an unsubmitted cycle, or archive submitted cycles for 30 days first."""
+    cycle = get_object_or_404(AppraisalCycle, pk=pk)
+
+    if request.method != 'POST':
+        return redirect('hr_admin:cycle_list')
+
+    cycle_name = cycle.name
+
+    if cycle.can_be_deleted:
+        cycle.delete()
+        messages.success(request, f"Cycle '{cycle_name}' deleted successfully.")
+        return redirect('hr_admin:cycle_list')
+
+    if cycle.has_submitted_appraisals:
+        if cycle.status != AppraisalCycle.ARCHIVED:
+            cycle.status = AppraisalCycle.ARCHIVED
+            cycle.archived_at = timezone.now()
+            cycle.save(update_fields=['status', 'archived_at', 'updated_at'])
+            messages.success(
+                request,
+                f"Cycle '{cycle_name}' has submitted appraisals, so it was archived. It can be deleted after 30 days."
+            )
+        else:
+            available_at = cycle.archive_delete_available_at
+            if available_at:
+                messages.error(
+                    request,
+                    f"Cycle '{cycle_name}' is archived but cannot be deleted until {available_at:%b %d, %Y}."
+                )
+            else:
+                messages.error(request, f"Cycle '{cycle_name}' cannot be deleted yet.")
+        return redirect('hr_admin:cycle_list')
+
+    messages.error(request, f"Cycle '{cycle_name}' cannot be deleted.")
+    return redirect('hr_admin:cycle_list')
 
 
 @hr_required
