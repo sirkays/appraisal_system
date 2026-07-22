@@ -145,7 +145,7 @@ class UserProfileAvatarView(APIView):
     """
     POST /api/me/avatar/
     Uploads or updates the authenticated user's profile picture.
-    Stores via Cloudinary when CLOUDINARY credentials are set in .env.
+    Stores files locally on the server.
     """
     permission_classes = [permissions.IsAuthenticated, IsNotHRAdmin]
     parser_classes = [MultiPartParser, FormParser]
