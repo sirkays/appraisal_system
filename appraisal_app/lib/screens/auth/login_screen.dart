@@ -85,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('📱 USB (adb reverse):', style: TextStyle(color: context.textPrimary, fontSize: 11, fontWeight: FontWeight.bold)),
-                      Text('http://127.0.0.1:9092/api', style: TextStyle(color: context.textSecondary, fontSize: 11, fontFamily: 'monospace')),
+                      Text('https://appraisalsystem.site/api', style: TextStyle(color: context.textSecondary, fontSize: 11, fontFamily: 'monospace')),
                       const SizedBox(height: 6),
                       Text('📶 Wi-Fi (same network):', style: TextStyle(color: context.textPrimary, fontSize: 11, fontWeight: FontWeight.bold)),
                       Text('Use your computer\'s IP:9092/api', style: TextStyle(color: context.textSecondary, fontSize: 11)),

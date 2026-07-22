@@ -112,7 +112,7 @@ class SettingsScreen extends StatelessWidget {
             controller: urlController,
             style: TextStyle(color: context.textPrimary),
             decoration: InputDecoration(
-              hintText: 'http://127.0.0.1:9092/api',
+              hintText: 'https://appraisalsystem.site/api',
               hintStyle: TextStyle(color: context.textSecondary),
               labelText: 'Django API URL',
               labelStyle: const TextStyle(color: AppConfig.secondaryColor),

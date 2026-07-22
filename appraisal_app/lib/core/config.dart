@@ -6,7 +6,7 @@ class AppConfig {
   static String get defaultBaseUrl {
     // USB (adb reverse tcp:9092 tcp:9092): use http://127.0.0.1:9092/api
     // Physical device over Wi-Fi: tap ⚙️ on login screen and enter http://<YOUR_PC_IP>:9092/api
-    return "http://127.0.0.1:9092/api";
+    return "https://appraisalsystem.site/api";
   }
 
   // Exact Website Accent & Brand Palette (Emerald to Teal Gradient)
