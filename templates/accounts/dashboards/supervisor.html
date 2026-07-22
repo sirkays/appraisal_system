@@ -64,7 +64,7 @@
             </div>
             <div>
                 <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Pending Staff</p>
-                <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{{ pending_self }}</p>
+                <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{{ pending_self|default:0 }}</p>
             </div>
         </div>
 
@@ -77,7 +77,7 @@
             </div>
             <div>
                 <p class="text-xs font-bold text-blue-600/70 dark:text-blue-400/80 uppercase tracking-wide">To Review</p>
-                <p class="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-0.5">{{ awaiting_review }}</p>
+                <p class="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-0.5">{{ awaiting_review|default:awaiting_my_review|default:0 }}</p>
             </div>
         </div>
 
@@ -90,7 +90,7 @@
             </div>
             <div>
                 <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Reviewed</p>
-                <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{{ reviewed }}</p>
+                <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{{ reviewed|default:completed|default:0 }}</p>
             </div>
         </div>
     </div>

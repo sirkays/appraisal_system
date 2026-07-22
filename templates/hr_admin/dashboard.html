@@ -24,7 +24,7 @@
                         <dl>
                             <dt class="text-sm font-medium text-gray-500 truncate">Active Cycles</dt>
                             <dd class="flex items-baseline">
-                                <div class="text-2xl font-bold text-gray-900">{{ active_cycle_count }}</div>
+                                <div class="text-2xl font-bold text-gray-900">{{ active_cycle_count|default:0 }}</div>
                             </dd>
                         </dl>
                     </div>
@@ -49,7 +49,7 @@
                         <dl>
                             <dt class="text-sm font-medium text-gray-500 truncate">Total Staff</dt>
                             <dd class="flex items-baseline">
-                                <div class="text-2xl font-bold text-gray-900">{{ total_staff }}</div>
+                                <div class="text-2xl font-bold text-gray-900">{{ total_staff|default:0 }}</div>
                             </dd>
                         </dl>
                     </div>
@@ -74,7 +74,7 @@
                         <dl>
                             <dt class="text-sm font-medium text-gray-500 truncate">Awaiting My Review</dt>
                             <dd class="flex items-baseline">
-                                <div class="text-2xl font-bold text-gray-900">{{ awaiting_my_review }}</div>
+                                <div class="text-2xl font-bold text-gray-900">{{ awaiting_my_review|default:0 }}</div>
                             </dd>
                         </dl>
                     </div>

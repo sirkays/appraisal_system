@@ -210,8 +210,11 @@ def supervisor_dashboard(request):
         'total_team': 0,
         'pending_self': 0,
         'awaiting_my_review': 0,
+        'awaiting_review': 0,
         'completed': 0,
+        'reviewed': 0,
         'pending_assignments': [],
+        'recent_submissions': [],
         'past_actions': [],
     }
 
@@ -235,6 +238,8 @@ def supervisor_dashboard(request):
                a.appraisal.status in ACTIONABLE_STATUSES
         ]
 
+        recent_submissions = [a.appraisal for a in current_pending]
+
         # Team (direct reports) stats
         team = CustomUser.objects.filter(supervisor=request.user)
         team_appraisals = Appraisal.objects.filter(staff__in=team, cycle=active_cycle).select_related('staff')
@@ -257,8 +262,11 @@ def supervisor_dashboard(request):
             'total_team': team.count(),
             'pending_self': pending_self,
             'awaiting_my_review': len(current_pending),
+            'awaiting_review': len(current_pending),
             'completed': completed,
+            'reviewed': completed,
             'pending_assignments': current_pending,
+            'recent_submissions': recent_submissions,
             'past_actions': past_actions,
         })
 
@@ -280,8 +288,10 @@ def hod_dashboard(request):
         'active_cycle': active_cycle,
         'total_dept_staff': 0,
         'awaiting_my_review': 0,
+        'awaiting_approval': 0,
         'approved': 0,
         'pending_assignments': [],
+        'recent_submissions': [],
         'dept_stats': [],
     }
 
@@ -309,6 +319,8 @@ def hod_dashboard(request):
                a.appraisal.status in ACTIONABLE_STATUSES
         ]
 
+        recent_submissions = [a.appraisal for a in current_pending]
+
         approved = dept_appraisals.filter(
             status__in=[Appraisal.APPROVED, Appraisal.STAFF_ACKNOWLEDGED, Appraisal.ARCHIVED]
         ).count()
@@ -316,8 +328,10 @@ def hod_dashboard(request):
         context.update({
             'total_dept_staff': dept_staff.count(),
             'awaiting_my_review': len(current_pending),
+            'awaiting_approval': len(current_pending),
             'approved': approved,
             'pending_assignments': current_pending,
+            'recent_submissions': recent_submissions,
             'dept_appraisals': dept_appraisals.order_by('staff__last_name'),
         })
 

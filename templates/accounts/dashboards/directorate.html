@@ -23,28 +23,28 @@
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 hover:shadow-md transition-shadow border-l-4 border-l-indigo-500">
       <div class="text-3xl">👥</div>
       <div>
-        <div class="text-3xl font-black text-indigo-600 leading-none">{{ total_staff }}</div>
+        <div class="text-3xl font-black text-indigo-600 leading-none">{{ total_staff|default:0 }}</div>
         <div class="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Total Participants</div>
       </div>
     </div>
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 hover:shadow-md transition-shadow border-l-4 border-l-amber-500">
       <div class="text-3xl">⏳</div>
       <div>
-        <div class="text-3xl font-black text-amber-500 leading-none">{{ awaiting_my_review }}</div>
+        <div class="text-3xl font-black text-amber-500 leading-none">{{ awaiting_my_review|default:0 }}</div>
         <div class="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Awaiting My Review</div>
       </div>
     </div>
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 hover:shadow-md transition-shadow border-l-4 border-l-emerald-500">
       <div class="text-3xl">✅</div>
       <div>
-        <div class="text-3xl font-black text-emerald-500 leading-none">{{ approved_count }}</div>
+        <div class="text-3xl font-black text-emerald-500 leading-none">{{ approved_count|default:0 }}</div>
         <div class="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Approved</div>
       </div>
     </div>
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
       <div class="text-3xl">📊</div>
       <div>
-        <div class="text-3xl font-black text-blue-500 leading-none">{{ completion_pct }}%</div>
+        <div class="text-3xl font-black text-blue-500 leading-none">{{ completion_pct|default:0 }}%</div>
         <div class="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Completion Rate</div>
       </div>
     </div>

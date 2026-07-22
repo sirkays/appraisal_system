@@ -51,7 +51,7 @@
             </div>
             <div>
                 <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Dept. Staff</p>
-                <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{{ total_dept_staff }}</p>
+                <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{{ total_dept_staff|default:0 }}</p>
             </div>
         </div>
 
@@ -64,7 +64,7 @@
             </div>
             <div>
                 <p class="text-xs font-bold text-blue-600/70 dark:text-blue-400/80 uppercase tracking-wide">Pending Approval</p>
-                <p class="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-0.5">{{ awaiting_approval }}</p>
+                <p class="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-0.5">{{ awaiting_approval|default:awaiting_my_review|default:0 }}</p>
             </div>
         </div>
 
@@ -77,7 +77,7 @@
             </div>
             <div>
                 <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Approved</p>
-                <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{{ approved }}</p>
+                <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">{{ approved|default:0 }}</p>
             </div>
         </div>
     </div>
