@@ -20,58 +20,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Tailwind CSS v4 browser runtime -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Pre-compiled Tailwind CSS -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
 
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
-    <style type="text/tailwindcss">
-        @variant dark (&:where(.dark, .dark *));
-        body { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; }
-
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.6rem 0.85rem;
-            border-radius: 0.75rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #64748b;
-            transition: all 150ms ease;
-            position: relative;
-        }
-        .nav-link:hover {
-            background-color: #f1f5f9;
-            color: #0f172a;
-        }
-        .dark .nav-link { color: #94a3b8; }
-        .dark .nav-link:hover { background-color: rgba(30,41,59,0.6); color: #f8fafc; }
-
-        .nav-link.active {
-            background: linear-gradient(135deg, #059669, #0d9488);
-            color: #fff !important;
-            font-weight: 600;
-            box-shadow: 0 4px 14px rgba(5,150,105,0.25);
-        }
-        .dark .nav-link.active {
-            background: linear-gradient(135deg, #065f46, #0f766e);
-            box-shadow: 0 4px 14px rgba(5,150,105,0.15);
-        }
-
-        .sidebar-section-label {
-            font-size: 0.65rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: #94a3b8;
-            padding: 0 0.85rem;
-            margin-bottom: 0.35rem;
-            margin-top: 0.5rem;
-        }
-        .dark .sidebar-section-label { color: #475569; }
-    </style>
 
     {% block extra_head %}{% endblock %}
 </head>
