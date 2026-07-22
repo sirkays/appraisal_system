@@ -193,6 +193,12 @@ STORAGES = {
     },
 }
 
+# Added to fix `AttributeError` in cloudinary_storage during collectstatic in Django 5.1+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+WHITENOISE_MANIFEST_STRICT = False
+
+
+
 # Custom user model
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
