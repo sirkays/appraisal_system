@@ -4,7 +4,7 @@ $app_dir = "/var/www/appraisalsystem"
 Write-Host "Deploying Appraisal System..." -ForegroundColor Green
 
 # The deployment script will SSH into the server and run the update commands
-ssh $server "cd $app_dir && git pull origin main && source .venv/bin/activate && pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --clear --noinput && systemctl restart appraisalsystem && systemctl restart nginx"
+ssh $server "cd $app_dir && git pull origin main && source .venv/bin/activate && pip install -r requirements.txt && python manage.py migrate && rm -rf staticfiles && python manage.py collectstatic --noinput && systemctl restart appraisalsystem && systemctl reload nginx 2>/dev/null || true"
 
 if ($?) {
     Write-Host "Deployment completed successfully!" -ForegroundColor Green
