@@ -53,7 +53,7 @@
           <div>
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 mb-2">GENERAL</span>
             <h3 class="text-lg font-bold text-slate-900">{{ general_process.name }}</h3>
-            <p class="text-sm text-slate-500 mt-1">{{ general_process.step_count }} step{{ general_process.step_count|pluralize }} &bull; Created by {{ general_process.created_by.get_full_name|default:general_process.created_by.username }}</p>
+            <p class="text-sm text-slate-500 mt-1">{{ general_process.step_count }} step{{ general_process.step_count|pluralize }}{% if general_process.created_by %} &bull; Created by {{ general_process.created_by.get_full_name|default:general_process.created_by.username }}{% endif %}</p>
           </div>
           <a href="{% url 'hr_admin:approval_process_edit' cycle_pk=cycle.pk process_pk=general_process.pk %}" class="text-sm text-indigo-600 hover:text-indigo-900 font-medium bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors">Edit Process</a>
         </div>

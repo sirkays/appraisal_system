@@ -14,4 +14,6 @@ urlpatterns = [
     path('directorate/dashboard/', views.directorate_dashboard, name='directorate_dashboard'),
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('switch-cycle/', views.switch_cycle, name='switch_cycle'),
+    path('profile/', views.profile, name='profile'),
+    path('settings/', views.settings, name='settings'),
 ]

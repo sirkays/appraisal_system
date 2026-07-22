@@ -236,14 +236,6 @@ def cycle_create(request):
         if target_users:
             cycle.target_staff.set(target_users)
 
-        if not target_depts and not target_users and branch:
-            # Auto-target all active users in this branch
-            branch_members = branch.members.filter(
-                is_active=True,
-                role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE]
-            )
-            cycle.target_staff.set(branch_members)
-
         messages.success(request, f"Cycle '{cycle.name}' created. Now configure the fields.")
         return redirect('hr_admin:cycle_edit', pk=cycle.pk)
 
@@ -255,7 +247,7 @@ def cycle_create(request):
         'departments': Department.objects.all(),
         'staff': CustomUser.objects.filter(
             is_active=True,
-            role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE]
+            role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE, CustomUser.HR_ADMIN]
         ),
         'target_dept_ids': [],
         'target_staff_ids': []
@@ -458,10 +450,30 @@ def cycle_edit(request, pk):
         }
         for sec in sections_qs
     ])
+    # Build dynamic step options from the general process
+    import json as json_module
+    general_process = cycle.approval_processes.filter(is_general=True).first()
+    general_steps = []
+    if general_process:
+        ordinals = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th']
+        number_emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
+        for step in general_process.steps.order_by('step_number'):
+            idx = step.step_number - 1
+            ordinal = ordinals[idx] if idx < len(ordinals) else f'{step.step_number}th'
+            emoji = number_emojis[idx] if idx < len(number_emojis) else '🔢'
+            general_steps.append({
+                'value': f'STEP_{step.step_number}',
+                'label_full': f'{emoji} Step {step.step_number} Approver ({ordinal} Step in Process)',
+                'label_short': f'Step {step.step_number} Approver',
+                'role': step.role_required,
+            })
+    general_steps_json = json_module.dumps(general_steps)
 
     return render(request, 'hr_admin/cycle_builder.html', {
         'cycle': cycle,
         'form_sections_json': form_sections_json,
+        'general_steps_json': general_steps_json,
+        'general_steps': general_steps,
     })
 
 
@@ -529,6 +541,7 @@ def approval_process_create(request, cycle_pk, process_pk=None):
                     step_number=step_data.get('step_number'),
                     label=step_data.get('label', ''),
                     role_required=step_data.get('role_required', 'SUPERVISOR'),
+                    approver_id=step_data.get('approver_id') or None,
                     action_label_approve=step_data.get('action_label_approve', 'Approve & Forward'),
                     action_label_return=step_data.get('action_label_return', 'Return for Revision'),
                     can_score=step_data.get('can_score', True),
@@ -548,16 +561,30 @@ def approval_process_create(request, cycle_pk, process_pk=None):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
     # GET — render builder
+    from accounts.models import CustomUser
     role_choices = ApprovalStep.ROLE_CHOICES
+    
+    all_users = list(CustomUser.objects.filter(
+        is_active=True,
+        role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE, CustomUser.HR_ADMIN]
+    ).values('id', 'first_name', 'last_name'))
+    
+    users_json = json.dumps([
+        {'id': u['id'], 'name': f"{u['first_name']} {u['last_name']}".strip() or f"User #{u['id']}"}
+        for u in all_users
+    ])
+
     context = {
         'cycle': cycle,
         'process': process,
         'role_choices': role_choices,
+        'users_json': users_json,
         'steps_json': json.dumps([
             {
                 'step_number': s.step_number,
                 'label': s.label,
                 'role_required': s.role_required,
+                'approver_id': s.approver_id,
                 'action_label_approve': s.action_label_approve,
                 'action_label_return': s.action_label_return,
                 'can_score': s.can_score,
@@ -594,128 +621,85 @@ def approval_process_delete(request, cycle_pk, process_pk):
 @hr_required
 def assign_approvers(request, cycle_pk):
     """
-    UI for assigning specific approver users to each step for each appraisal
-    in a cycle. Supports bulk auto-assign and individual overrides.
+    UI for assigning a specific ApprovalProcess to staff members in a cycle.
     """
     cycle = get_object_or_404(AppraisalCycle, pk=cycle_pk)
-    from accounts.models import CustomUser
 
     if request.method == 'POST':
-        # Handle bulk auto-assign
-        if request.POST.get('action') == 'bulk_auto_assign':
-            step_pk = request.POST.get('step_pk')
-            rule = request.POST.get('rule', 'supervisor')  # 'supervisor' or 'specific_user'
-            specific_user_pk = request.POST.get('specific_user')
+        action = request.POST.get('action')
+        if action == 'assign_process':
+            process_pk = request.POST.get('process_id')
+            staff_ids = request.POST.getlist('staff_ids')
+            
+            if process_pk and staff_ids:
+                process = None
+                if process_pk != 'general':
+                    process = get_object_or_404(ApprovalProcess, pk=process_pk, cycle=cycle)
+                
+                appraisals = Appraisal.objects.filter(cycle=cycle, staff_id__in=staff_ids).select_related('staff', 'staff__department')
+                active_proc = process if process else cycle.general_approval_process
+                
+                valid_appraisals = []
+                if active_proc:
+                    errors = set()
+                    for appraisal in appraisals:
+                        appraisal_valid = True
+                        for step in active_proc.steps.all():
+                            if not step.approver:
+                                resolved = _resolve_dynamic_approver(appraisal.staff, step.role_required)
+                                if not resolved:
+                                    errors.add(f"{appraisal.staff.full_name} cannot be assigned this process because they lack a {step.get_role_required_display()} for step '{step.label}'.")
+                                    appraisal_valid = False
+                                    break
+                        if appraisal_valid:
+                            valid_appraisals.append(appraisal)
+                            
+                    for err in list(errors)[:5]:
+                        messages.error(request, err)
+                    if len(errors) > 5:
+                        messages.error(request, f"...and {len(errors) - 5} other staff members failed validation.")
+                        
+                else:
+                    valid_appraisals = appraisals
 
-            assignments = AppraisalApprovalAssignment.objects.filter(
-                step__pk=step_pk,
-                appraisal__cycle=cycle
-            ).select_related('appraisal__staff')
-
-            assigned_count = 0
-            for assignment in assignments:
-                if rule == 'supervisor' and assignment.appraisal.staff.supervisor:
-                    assignment.approver = assignment.appraisal.staff.supervisor
-                    assignment.save()
-                    assigned_count += 1
-                elif rule == 'specific_user' and specific_user_pk:
-                    try:
-                        user = CustomUser.objects.get(pk=specific_user_pk)
-                        assignment.approver = user
-                        assignment.save()
-                        assigned_count += 1
-                    except CustomUser.DoesNotExist:
-                        pass
-
-            messages.success(request, f"{assigned_count} approver(s) auto-assigned successfully.")
-            return redirect('hr_admin:assign_approvers', cycle_pk=cycle_pk)
-
-        # Handle individual assignment saves
-        for key, value in request.POST.items():
-            if key.startswith('assignment_'):
-                try:
-                    assignment_pk = int(key.split('_')[1])
-                    assignment = AppraisalApprovalAssignment.objects.get(pk=assignment_pk)
-                    if value:
-                        user = CustomUser.objects.get(pk=value)
-                        assignment.approver = user
-                    else:
-                        assignment.approver = None
-                    assignment.save()
-                except (AppraisalApprovalAssignment.DoesNotExist, CustomUser.DoesNotExist, ValueError):
-                    pass
-
-        messages.success(request, "Approver assignments saved successfully.")
+                for appraisal in valid_appraisals:
+                    appraisal.override_process = process
+                    appraisal.save(update_fields=['override_process'])
+                    
+                    # Re-sync assignments for this appraisal
+                    appraisal.approval_assignments.all().delete()
+                    if active_proc:
+                        _create_assignments_for_appraisal(appraisal, active_proc)
+                
+                if valid_appraisals:
+                    messages.success(request, f"Process assigned to {len(valid_appraisals)} staff members successfully.")
+        
         return redirect('hr_admin:assign_approvers', cycle_pk=cycle_pk)
 
-    # GET — build the assignment table
-    general_process = cycle.general_approval_process
-    if not general_process:
-        messages.warning(request, "No general approval process defined for this cycle. Please create one first.")
-        return redirect('hr_admin:approval_process_list', cycle_pk=cycle_pk)
-
     _initialize_cycle_appraisals(cycle)
-
-    from django.db.models import Case, When, Value, IntegerField
-    steps = general_process.steps.all()
+    
+    processes = cycle.approval_processes.all()
+    general_process = cycle.general_approval_process
+    
     intended_staff = _cycle_target_staff_queryset(cycle)
     appraisals = cycle.appraisals.filter(staff__in=intended_staff).select_related(
         'staff', 'staff__department', 'override_process'
-    ).annotate(
-        role_order=Case(
-            When(staff__role='STAFF', then=Value(1)),
-            When(staff__role='SUPERVISOR', then=Value(2)),
-            When(staff__role='HOD', then=Value(3)),
-            When(staff__role='DIRECTORATE', then=Value(4)),
-            default=Value(5),
-            output_field=IntegerField(),
-        )
-    ).order_by('role_order', 'override_process__id', 'staff__last_name', 'staff__first_name')
-
-    # Get all possible approvers grouped by role
-    role_users = {}
-    for role_code, role_label in ApprovalStep.ROLE_CHOICES:
-        role_users[role_code] = CustomUser.objects.filter(role=role_code, is_active=True)
-
-    intended_department_ids = intended_staff.exclude(
-        department__isnull=True
-    ).values_list('department_id', flat=True)
-    current_approver_ids = AppraisalApprovalAssignment.objects.filter(
-        appraisal__cycle=cycle,
-        appraisal__staff__in=intended_staff,
-        approver__isnull=False,
-    ).values_list('approver_id', flat=True)
-    all_active_users = CustomUser.objects.filter(
-        Q(department__in=cycle.target_departments.all()) |
-        Q(department_id__in=intended_department_ids) |
-        Q(id__in=cycle.target_staff.values_list('id', flat=True)) |
-        Q(id__in=current_approver_ids),
-        is_active=True,
-    ).distinct()
-
-    # Build assignment map: {appraisal_pk: {step_number: assignment}}
-    assignments_map = {}
-    for appraisal in appraisals:
-        assignments_map[appraisal.pk] = {}
-        active_proc = appraisal.active_process
-        if active_proc:
-            for step in active_proc.steps.all():
-                assignment = appraisal.approval_assignments.filter(step=step).first()
-                if not assignment:
-                    # Create missing assignment
-                    assignment = AppraisalApprovalAssignment.objects.create(
-                        appraisal=appraisal, step=step,
-                    )
-                assignments_map[appraisal.pk][step.step_number] = assignment
+    ).prefetch_related(
+        'approval_assignments', 'approval_assignments__step', 'approval_assignments__approver'
+    ).order_by('staff__last_name', 'staff__first_name')
+    
+    from departments.models import Department
+    from accounts.models import CustomUser
+    departments = Department.objects.all().order_by('name')
+    roles = CustomUser.ROLE_CHOICES
 
     context = {
         'cycle': cycle,
+        'processes': processes,
         'general_process': general_process,
-        'steps': steps,
         'appraisals': appraisals,
-        'assignments_map': assignments_map,
-        'role_users': role_users,
-        'all_active_users': all_active_users.order_by('last_name', 'first_name'),
+        'departments': departments,
+        'roles': roles,
     }
     return render(request, 'hr_admin/assign_approvers.html', context)
 
@@ -724,7 +708,7 @@ def _cycle_target_staff_queryset(cycle):
     """Return active staff intended for a cycle based on its target settings."""
     base_staff = CustomUser.objects.filter(
         is_active=True,
-        role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE],
+        role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE, CustomUser.HR_ADMIN],
     )
 
     target_departments = cycle.target_departments.all()
@@ -1165,29 +1149,7 @@ def _initialize_cycle_appraisals(cycle):
     Create Appraisal records + AppraisalApprovalAssignment records
     for all targeted staff when a cycle is activated.
     """
-    base_active_staff = CustomUser.objects.filter(
-        is_active=True,
-        role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE]
-    )
-
-    target_depts = cycle.target_departments.all()
-    target_users = cycle.target_staff.all()
-
-    if target_depts.exists() or target_users.exists():
-        active_staff = CustomUser.objects.none()
-        if target_depts.exists():
-            active_staff = active_staff | base_active_staff.filter(department__in=target_depts)
-        if target_users.exists():
-            active_staff = active_staff | base_active_staff.filter(
-                id__in=target_users.values_list('id', flat=True)
-            )
-        active_staff = active_staff.distinct()
-    else:
-        active_staff = base_active_staff
-
-    excluded_ids = set(cycle.excluded_staff.values_list('id', flat=True))
-    active_staff = active_staff.exclude(id__in=excluded_ids)
-
+    active_staff = cycle.get_eligible_staff()
     general_process = cycle.general_approval_process
 
     for staff in active_staff:
@@ -1209,10 +1171,43 @@ def _initialize_cycle_appraisals(cycle):
             for item in CompetencyItem.objects.filter(category__cycle=cycle):
                 CompetencyScore.objects.get_or_create(appraisal=appraisal, competency_item=item)
 
-        # Initialize approval assignments for general process
-        if general_process:
-            _create_assignments_for_appraisal(appraisal, general_process)
+        # Initialize approval assignments for active process
+        active_proc = appraisal.active_process
+        if active_proc:
+            # Validate if it can be applied
+            is_valid = True
+            for step in active_proc.steps.all():
+                if not step.approver and not _resolve_dynamic_approver(appraisal.staff, step.role_required):
+                    is_valid = False
+                    break
+            
+            if is_valid:
+                # Clean up any assignments that belong to a different process
+                appraisal.approval_assignments.exclude(step__process=active_proc).delete()
+                _create_assignments_for_appraisal(appraisal, active_proc)
+            else:
+                # The active process is invalid for this user (e.g. general process requires missing supervisor).
+                # Wipe assignments so they don't erroneously show up as having this process.
+                appraisal.approval_assignments.all().delete()
 
+def _resolve_dynamic_approver(staff, role_code):
+    from accounts.models import CustomUser
+    
+    # A staff member cannot be subject to a review step meant for their own role level.
+    # (e.g. A Supervisor shouldn't have a 'Supervisor Review' step, it should start at HOD).
+    if staff.role == role_code:
+        return None
+
+    if role_code == 'SUPERVISOR':
+        return staff.supervisor if staff.supervisor != staff else None
+    elif role_code == 'HOD':
+        hod = staff.department.hod if staff.department else None
+        return hod if hod != staff else None
+    elif role_code == 'DIRECTORATE':
+        return CustomUser.objects.filter(role=CustomUser.DIRECTORATE, is_active=True).first()
+    elif role_code == 'HR_ADMIN':
+        return CustomUser.objects.filter(role=CustomUser.HR_ADMIN, is_active=True).first()
+    return None
 
 def _create_assignments_for_appraisal(appraisal, process):
     """Create AppraisalApprovalAssignment records for each step in the process."""
@@ -1221,10 +1216,15 @@ def _create_assignments_for_appraisal(appraisal, process):
             appraisal=appraisal,
             step=step,
         )
-        # Auto-assign step 1 to the staff's supervisor
-        if created and step.step_number == 1 and appraisal.staff.supervisor:
-            assignment.approver = appraisal.staff.supervisor
-            assignment.save()
+        if created or not assignment.approver:
+            if step.approver:
+                assignment.approver = step.approver
+                assignment.save()
+            else:
+                resolved_user = _resolve_dynamic_approver(appraisal.staff, step.role_required)
+                if resolved_user:
+                    assignment.approver = resolved_user
+                    assignment.save()
 
 
 def _sync_assignments_for_process(cycle, process):
@@ -1239,28 +1239,10 @@ def sync_active_cycle_appraisals(cycle):
     _initialize_cycle_appraisals(cycle)
 
     # Remove unintended appraisals that haven't started
-    base_active_staff = CustomUser.objects.filter(
-        is_active=True,
-        role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE]
-    )
-    target_depts = cycle.target_departments.all()
-    target_users = cycle.target_staff.all()
-
-    if target_depts.exists() or target_users.exists():
-        intended = CustomUser.objects.none()
-        if target_depts.exists():
-            intended = intended | base_active_staff.filter(department__in=target_depts)
-        if target_users.exists():
-            intended = intended | base_active_staff.filter(id__in=target_users.values_list('id', flat=True))
-        intended = intended.distinct()
-    else:
-        intended = base_active_staff
-
-    excluded_ids = set(cycle.excluded_staff.values_list('id', flat=True))
-    intended_ids = set(intended.exclude(id__in=excluded_ids).values_list('id', flat=True))
+    eligible_ids = set(cycle.get_eligible_staff().values_list('id', flat=True))
 
     for appraisal in Appraisal.objects.filter(cycle=cycle):
-        if appraisal.staff_id not in intended_ids:
+        if appraisal.staff_id not in eligible_ids:
             if appraisal.status == Appraisal.NOT_STARTED:
                 appraisal.delete()
 
@@ -1295,13 +1277,6 @@ def cycle_settings(request, pk):
         target_users = request.POST.getlist('target_staff')
         cycle.target_staff.set(target_users)
 
-        if not target_depts and not target_users and cycle.branch:
-            branch_members = cycle.branch.members.filter(
-                is_active=True,
-                role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE]
-            )
-            cycle.target_staff.set(branch_members)
-
         if target_users:
             cycle.excluded_staff.remove(*target_users)
 
@@ -1320,7 +1295,7 @@ def cycle_settings(request, pk):
         'departments': Department.objects.all(),
         'staff': CustomUser.objects.filter(
             is_active=True,
-            role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE]
+            role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE, CustomUser.HR_ADMIN]
         ),
         'target_dept_ids': cycle.target_departments.values_list('id', flat=True),
         'target_staff_ids': cycle.target_staff.values_list('id', flat=True),
@@ -1332,7 +1307,7 @@ def cycle_settings(request, pk):
     else:
         base_active = CustomUser.objects.filter(
             is_active=True,
-            role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE]
+            role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE, CustomUser.HR_ADMIN]
         )
         if cycle.target_departments.exists() or cycle.target_staff.exists():
             intended = CustomUser.objects.none()

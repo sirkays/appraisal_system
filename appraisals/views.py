@@ -9,6 +9,7 @@ Each appraisal uses either the cycle's general process or a per-staff override p
 """
 
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db import models
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpResponse
@@ -270,8 +271,10 @@ def _return_appraisal(appraisal, current_assignment, actioning_user, return_comm
     Return the appraisal. Step 1 returns go to staff; higher steps return to previous step.
     Keep the latest return reason on the appraisal and the assignment so
     every reviewer page can display why the appraisal was returned.
+    Also writes an immutable ReturnLog entry so the full history is always preserved.
     """
     from notifications.models import Notification
+    from appraisals.models import AppraisalReturnLog
 
     current_step_number = appraisal.current_step_number
     current_assignment.status = AppraisalApprovalAssignment.RETURNED
@@ -280,6 +283,7 @@ def _return_appraisal(appraisal, current_assignment, actioning_user, return_comm
     current_assignment.save()
 
     if current_step_number <= 1:
+        to_step = 0  # back to staff
         # Return to staff
         appraisal.status = Appraisal.RETURNED_TO_STAFF
         appraisal.supervisor_return_notes = return_comment
@@ -297,6 +301,7 @@ def _return_appraisal(appraisal, current_assignment, actioning_user, return_comm
     else:
         # Return to previous step
         prev_step_number = current_step_number - 1
+        to_step = prev_step_number
         process = appraisal.active_process
         prev_step = process.steps.filter(step_number=prev_step_number).first() if process else None
 
@@ -319,6 +324,16 @@ def _return_appraisal(appraisal, current_assignment, actioning_user, return_comm
                     f"{appraisal.staff.get_full_name()}'s appraisal was returned by {actioning_user.get_full_name()} at step {current_step_number}. Reason: {return_comment}",
                     appraisal
                 )
+
+    # Write immutable return log entry
+    AppraisalReturnLog.objects.create(
+        appraisal=appraisal,
+        reviewer=actioning_user,
+        step=current_assignment.step,
+        from_step_number=current_step_number,
+        to_step_number=to_step,
+        reason=return_comment or '',
+    )
 
     # NOTE: Do NOT reset the current (returning) assignment — it stays RETURNED.
     # The previous step assignment was already reset to PENDING above.
@@ -611,14 +626,79 @@ def step_review(request, pk):
 
     current_step = current_assignment.step if current_assignment else None
 
-    # Map ApprovalStep.role_required to FormField.filled_by
-    ROLE_MAP = {
-        'SUPERVISOR': FormField.SUPERVISOR,
-        'HOD': FormField.HOD,
-        'DIRECTORATE': FormField.DIRECTORATE,
-        'HR_ADMIN': FormField.HR_ADMIN,
-    }
-    reviewer_filled_by = ROLE_MAP.get(current_step.role_required, '') if current_step else ''
+    # Map ApprovalStep to FormField.filled_by matches.
+    # STEP_N values in the form builder always refer to the GENERAL process
+    # step numbering, so we resolve them to roles via the general process.
+    # This ensures that e.g. STEP_2 = HOD works even when reviewing an
+    # appraisal that uses an override process where the HOD is at step 1.
+    role_code = current_step.role_required if current_step else ''
+
+    # Build allowed_filled_by_values: the set of filled_by codes this reviewer
+    # is permitted to fill.
+    #
+    # STEP_N in the form builder is resolved as follows:
+    #   1. Always include the reviewer's direct role code (e.g. HOD)
+    #   2. Include STEP_N codes from the GENERAL process where the role matches
+    #      (e.g. HOD matches STEP_2 in the general process)
+    #   3. Include STEP_N for the reviewer's active step number ONLY if
+    #      the general process doesn't assign that step to a DIFFERENT role
+    #      (this handles override processes where step numbers shift)
+    #
+    # Example:
+    #   General:  Step 1=Supervisor, Step 2=HOD, Step 3=Director, Step 4=HR
+    #   Override: Step 1=HOD, Step 2=Director, Step 3=HR
+    #   HOD at override step 1:
+    #     -> STEP_2 (general process: HOD = step 2)
+    #     -> STEP_1 (active step 1; general has SUPERVISOR there, but HOD IS
+    #        the reviewer at step 1, so include it)
+    #     -> HOD (direct role)
+    #   Director at override step 2:
+    #     -> STEP_3 (general process: Director = step 3)
+    #     -> NOT STEP_2 (general process says STEP_2 = HOD, different role)
+    #     -> DIRECTORATE (direct role)
+
+    # Build general process role map first
+    general_process = appraisal.cycle.approval_processes.filter(is_general=True).first()
+    general_step_role_map = {}
+    if general_process:
+        for gstep in general_process.steps.all():
+            general_step_role_map[f'STEP_{gstep.step_number}'] = gstep.role_required
+
+    allowed_filled_by_values = set()
+
+    # 1. Always include the reviewer's direct role code
+    if role_code:
+        allowed_filled_by_values.add(role_code)
+
+    # 2. Include STEP_N codes from the GENERAL process where the role matches
+    general_step_codes = [code for code, role in general_step_role_map.items() if role == role_code]
+    allowed_filled_by_values.update(general_step_codes)
+
+    # 3. Include STEP_N for the active process step number, but only when
+    #    appropriate. If the general process assigns a DIFFERENT role at
+    #    that step, only include it if that role is NOT present as a separate
+    #    step in the active process (meaning this reviewer absorbs those duties).
+    if current_step:
+        active_step_code = f'STEP_{current_step.step_number}'
+        general_role_at_step = general_step_role_map.get(active_step_code)
+        if general_role_at_step is None or general_role_at_step == role_code:
+            # Same role or step doesn't exist in general -> always include
+            allowed_filled_by_values.add(active_step_code)
+        else:
+            # General process has a different role at this step number.
+            # Only include if that role doesn't have its own step in the
+            # active process (meaning this reviewer absorbs those duties).
+            active_process = appraisal.active_process
+            active_roles = set()
+            if active_process:
+                active_roles = set(
+                    s.role_required for s in active_process.steps.all()
+                )
+            if general_role_at_step not in active_roles:
+                allowed_filled_by_values.add(active_step_code)
+
+    allowed_filled_by_values = [v for v in allowed_filled_by_values if v]
+    reviewer_filled_by = role_code
 
     if request.method == 'POST':
         if not is_editable:
@@ -628,10 +708,10 @@ def step_review(request, pk):
         action = request.POST.get('action')
         comments = request.POST.get('comments', '').strip()
 
-        # --- Save reviewer's primary fields (assigned to this role) ---
+        # --- Save reviewer's primary fields (assigned to this role or step) ---
         reviewer_fields = FormField.objects.filter(
             section__cycle=appraisal.cycle,
-            filled_by=reviewer_filled_by,
+            filled_by__in=allowed_filled_by_values,
         )
         for field in reviewer_fields:
             resp, _ = FormFieldResponse.objects.get_or_create(
@@ -651,12 +731,18 @@ def step_review(request, pk):
                     resp.score = Decimal(val) if val else None
                 except InvalidOperation:
                     resp.score = None
+                # Clamp to field min/max
+                if resp.score is not None:
+                    resp.score = max(field.min_score, min(field.max_score, resp.score))
             elif ftype == FormField.SCORE_COMMENT:
                 val = request.POST.get(f'{post_key}_score', '').strip()
                 try:
                     resp.score = Decimal(val) if val else None
                 except InvalidOperation:
                     resp.score = None
+                # Clamp to field min/max
+                if resp.score is not None:
+                    resp.score = max(field.min_score, min(field.max_score, resp.score))
                 resp.text_response = request.POST.get(f'{post_key}_comment', '').strip()
             elif ftype == FormField.SINGLE_SELECT:
                 selected = request.POST.get(post_key, '')
@@ -674,16 +760,13 @@ def step_review(request, pk):
             section__cycle=appraisal.cycle,
             filled_by=FormField.APPRAISEE,
         ).filter(
-            reviewer_can_score=True, reviewer_score_role=reviewer_filled_by
-        ) | FormField.objects.filter(
-            section__cycle=appraisal.cycle,
-            filled_by=FormField.APPRAISEE,
-            reviewer_can_comment=True, reviewer_comment_role=reviewer_filled_by
+            models.Q(reviewer_can_score=True, reviewer_score_role__in=allowed_filled_by_values) |
+            models.Q(reviewer_can_comment=True, reviewer_comment_role__in=allowed_filled_by_values)
         )
 
         for field in appraisee_fields_mode_b.distinct():
             # Reviewer score on appraisee field
-            if field.reviewer_can_score and field.reviewer_score_role == reviewer_filled_by:
+            if field.reviewer_can_score and field.reviewer_score_role in allowed_filled_by_values:
                 score_resp, _ = FormFieldResponse.objects.get_or_create(
                     appraisal=appraisal,
                     field=field,
@@ -695,10 +778,13 @@ def step_review(request, pk):
                     score_resp.score = Decimal(val) if val else None
                 except InvalidOperation:
                     score_resp.score = None
+                # Clamp to 0..reviewer_score_max
+                if score_resp.score is not None:
+                    score_resp.score = max(Decimal('0'), min(field.reviewer_score_max, score_resp.score))
                 score_resp.save()
 
             # Reviewer comment on appraisee field
-            if field.reviewer_can_comment and field.reviewer_comment_role == reviewer_filled_by:
+            if field.reviewer_can_comment and field.reviewer_comment_role in allowed_filled_by_values:
                 comment_resp, _ = FormFieldResponse.objects.get_or_create(
                     appraisal=appraisal,
                     field=field,
@@ -716,43 +802,23 @@ def step_review(request, pk):
             return redirect('appraisals:step_review', pk=pk)
 
         elif action == 'approve':
-            # Validate required reviewer fields
-            if current_step and current_step.can_score:
-                missing = []
-                for field in reviewer_fields.filter(is_required=True, field_type__in=[FormField.SCORE, FormField.SCORE_COMMENT]):
-                    resp = FormFieldResponse.objects.filter(
-                        appraisal=appraisal, field=field,
-                        responded_by=request.user,
-                        response_type=FormFieldResponse.PRIMARY,
-                    ).first()
-                    if not resp or resp.score is None:
-                        missing.append(field.label)
+            current_assignment.status = AppraisalApprovalAssignment.APPROVED
+            current_assignment.actioned_at = timezone.now()
+            current_assignment.save()
 
-                if missing:
-                    messages.error(
-                        request,
-                        f"Cannot approve. Missing required scores: {', '.join(missing[:5])}"
-                        + (f" and {len(missing)-5} more..." if len(missing) > 5 else "")
-                    )
-                    return redirect('appraisals:step_review', pk=pk)
-
-                appraisal.overall_supervisor_score = _calculate_weighted_score(appraisal, 'supervisor')
-                appraisal.supervisor_reviewed_at = timezone.now()
-                appraisal.save()
-
+            # Advance workflow to next step
             _advance_appraisal(appraisal, current_assignment, request.user)
-            messages.success(request, "Appraisal approved and forwarded to the next step.")
-            return redirect('accounts:dashboard_redirect')
+
+            messages.success(request, "Appraisal approved and advanced to the next step.")
+            return redirect('appraisals:review_queue')
 
         elif action == 'return':
             return_comment = request.POST.get('return_comment', '').strip() or comments
             _return_appraisal(appraisal, current_assignment, request.user, return_comment)
-            messages.success(request, "Appraisal returned for revision.")
-            return redirect('accounts:dashboard_redirect')
+            messages.warning(request, "Appraisal returned for revision.")
+            return redirect('appraisals:review_queue')
 
-    # --- GET: Build context ---
-
-    # Appraisee sections (read-only for reviewer)
+    # GET: Prepare sections data for template
     appraisee_sections_data = []
     for section in FormSection.objects.filter(cycle=appraisal.cycle).order_by('order'):
         fields_data = []
@@ -767,14 +833,14 @@ def step_review(request, pk):
             # Mode B: check if this reviewer has score/comment on this field
             mode_b_score_resp = None
             mode_b_comment_resp = None
-            if reviewer_filled_by:
-                if field.reviewer_can_score and field.reviewer_score_role == reviewer_filled_by:
+            if allowed_filled_by_values:
+                if field.reviewer_can_score and field.reviewer_score_role in allowed_filled_by_values:
                     mode_b_score_resp = FormFieldResponse.objects.filter(
                         appraisal=appraisal, field=field,
                         responded_by=request.user,
                         response_type=FormFieldResponse.REVIEWER_SCORE,
                     ).first()
-                if field.reviewer_can_comment and field.reviewer_comment_role == reviewer_filled_by:
+                if field.reviewer_can_comment and field.reviewer_comment_role in allowed_filled_by_values:
                     mode_b_comment_resp = FormFieldResponse.objects.filter(
                         appraisal=appraisal, field=field,
                         responded_by=request.user,
@@ -786,8 +852,8 @@ def step_review(request, pk):
                 'response': primary_resp,
                 'mode_b_score_resp': mode_b_score_resp,
                 'mode_b_comment_resp': mode_b_comment_resp,
-                'can_score': (field.reviewer_can_score and field.reviewer_score_role == reviewer_filled_by),
-                'can_comment': (field.reviewer_can_comment and field.reviewer_comment_role == reviewer_filled_by),
+                'can_score': (field.reviewer_can_score and field.reviewer_score_role in allowed_filled_by_values),
+                'can_comment': (field.reviewer_can_comment and field.reviewer_comment_role in allowed_filled_by_values),
             })
         if fields_data:
             appraisee_sections_data.append({'section': section, 'fields': fields_data})
@@ -796,7 +862,7 @@ def step_review(request, pk):
     reviewer_sections_data = []
     for section in FormSection.objects.filter(cycle=appraisal.cycle).order_by('order'):
         fields_data = []
-        for field in section.fields.filter(filled_by=reviewer_filled_by).order_by('order') if reviewer_filled_by else []:
+        for field in section.fields.filter(filled_by__in=allowed_filled_by_values).order_by('order') if allowed_filled_by_values else []:
             resp = FormFieldResponse.objects.filter(
                 appraisal=appraisal,
                 field=field,
@@ -806,6 +872,33 @@ def step_review(request, pk):
             fields_data.append({'field': field, 'response': resp})
         if fields_data:
             reviewer_sections_data.append({'section': section, 'fields': fields_data})
+
+    # Previous reviewers' fields (read-only) — shows scores/comments from
+    # earlier steps so the current reviewer has full context.
+    previous_reviewer_sections_data = []
+    # Collect all filled_by values that are NOT appraisee and NOT current reviewer
+    all_step_and_role_codes = set()
+    if general_step_role_map:
+        all_step_and_role_codes.update(general_step_role_map.keys())
+        all_step_and_role_codes.update(general_step_role_map.values())
+    # Also include direct role codes
+    for rc in ['SUPERVISOR', 'HOD', 'DIRECTORATE', 'HR_ADMIN']:
+        all_step_and_role_codes.add(rc)
+    # Remove current reviewer's codes and APPRAISEE
+    prev_codes = all_step_and_role_codes - set(allowed_filled_by_values) - {'APPRAISEE'}
+
+    for section in FormSection.objects.filter(cycle=appraisal.cycle).order_by('order'):
+        fields_data = []
+        for field in section.fields.filter(filled_by__in=prev_codes).order_by('order') if prev_codes else []:
+            # Find the response from whoever filled it
+            resp = FormFieldResponse.objects.filter(
+                appraisal=appraisal,
+                field=field,
+                response_type=FormFieldResponse.PRIMARY,
+            ).first()
+            fields_data.append({'field': field, 'response': resp})
+        if fields_data:
+            previous_reviewer_sections_data.append({'section': section, 'fields': fields_data})
 
     all_assignments = appraisal.approval_assignments.select_related(
         'step', 'approver'
@@ -831,6 +924,7 @@ def step_review(request, pk):
         'is_editable': is_editable,
         'is_hr_admin': is_hr_admin,
         'appraisee_sections_data': appraisee_sections_data,
+        'previous_reviewer_sections_data': previous_reviewer_sections_data,
         'reviewer_sections_data': reviewer_sections_data,
         'all_assignments': all_assignments,
         'return_reason_entries': return_reason_entries,
@@ -922,16 +1016,17 @@ def my_review_queue(request):
         messages.error(request, "Access denied.")
         return redirect('accounts:dashboard_redirect')
 
-    active_cycle = AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE).first()
+    active_cycles = AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE)
+    active_cycle = active_cycles.first()  # For template context (cycle selector)
 
-    # Pending assignments for this reviewer in the active cycle
+    # Pending assignments for this reviewer across ALL active cycles
     pending_assignments = AppraisalApprovalAssignment.objects.filter(
         approver=request.user,
         status=AppraisalApprovalAssignment.PENDING,
     ).select_related('appraisal__staff', 'appraisal__cycle', 'step')
 
-    if active_cycle:
-        pending_assignments = pending_assignments.filter(appraisal__cycle=active_cycle)
+    if active_cycles.exists():
+        pending_assignments = pending_assignments.filter(appraisal__cycle__in=active_cycles)
 
     # Filter to only assignments where this step is the CURRENT step
     ACTIONABLE_STATUSES = [
@@ -949,11 +1044,17 @@ def my_review_queue(request):
         reverse=True,
     )
 
-    # All past assignments (reviewed history)
+    # Appraisal IDs currently in the user's pending queue — exclude from history
+    pending_appraisal_ids = {a.appraisal_id for a in current_pending}
+
+    # All past assignments (reviewed history) — APPROVED or RETURNED, excluding currently pending
+    # We cast a wide net: all cycles so nothing disappears after approval
     past_assignments = AppraisalApprovalAssignment.objects.filter(
         approver=request.user,
         status__in=[AppraisalApprovalAssignment.APPROVED, AppraisalApprovalAssignment.RETURNED],
-    ).select_related('appraisal__staff', 'appraisal__cycle', 'step').order_by('-actioned_at')[:20]
+    ).exclude(
+        appraisal_id__in=pending_appraisal_ids
+    ).select_related('appraisal__staff', 'appraisal__cycle', 'step').order_by('-actioned_at')[:50]
 
     context = {
         'current_pending': current_pending,
@@ -975,7 +1076,7 @@ def team_list(request):
         return redirect('accounts:dashboard_redirect')
 
     team = CustomUser.objects.filter(supervisor=request.user).select_related('department')
-    active_cycle = AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE).first()
+    active_cycles = AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE)
 
     # --- Read filter params ---
     search_q = request.GET.get('q', '').strip()
@@ -984,8 +1085,8 @@ def team_list(request):
     team_data = []
     for member in team:
         appraisal = None
-        if active_cycle:
-            appraisal = Appraisal.objects.filter(staff=member, cycle=active_cycle).first()
+        if active_cycles.exists():
+            appraisal = Appraisal.objects.filter(staff=member, cycle__in=active_cycles).order_by('-created_at').first()
         team_data.append({'member': member, 'appraisal': appraisal})
 
     # --- Apply search filter ---
@@ -1032,7 +1133,7 @@ def team_list(request):
 
     context = {
         'team_data': team_data,
-        'active_cycle': active_cycle,
+        'active_cycle': active_cycles.first(),
         'search_q': search_q,
         'status_filter': status_filter,
         'total_count': CustomUser.objects.filter(supervisor=request.user).count(),
@@ -1048,17 +1149,58 @@ def department_appraisals(request):
         return redirect('accounts:dashboard_redirect')
 
     dept_staff = CustomUser.objects.filter(department=request.user.department)
-    active_cycle = AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE).first()
+    active_cycles = AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE)
 
     dept_data = []
     for member in dept_staff:
         appraisal = None
-        if active_cycle:
-            appraisal = Appraisal.objects.filter(staff=member, cycle=active_cycle).first()
+        if active_cycles.exists():
+            appraisal = Appraisal.objects.filter(staff=member, cycle__in=active_cycles).order_by('-created_at').first()
         dept_data.append({'member': member, 'appraisal': appraisal})
 
-    context = {'dept_data': dept_data, 'active_cycle': active_cycle}
+    context = {'dept_data': dept_data, 'active_cycle': active_cycles.first()}
     return render(request, 'appraisals/department_list.html', context)
+
+
+@login_required
+def department_reports(request):
+    """Displays a summary report for the HOD's department."""
+    if request.user.role != CustomUser.HOD:
+        messages.error(request, "Access denied.")
+        return redirect('accounts:dashboard_redirect')
+
+    dept_staff = CustomUser.objects.filter(department=request.user.department)
+    active_cycles = AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE)
+
+    total_staff = dept_staff.count()
+    completed_appraisals = 0
+    in_progress = 0
+    not_started = 0
+
+    if active_cycles.exists():
+        appraisals = Appraisal.objects.filter(staff__in=dept_staff, cycle__in=active_cycles)
+        for appraisal in appraisals:
+            if appraisal.status in [Appraisal.APPROVED, Appraisal.STAFF_ACKNOWLEDGED, Appraisal.ARCHIVED]:
+                completed_appraisals += 1
+            elif appraisal.status in [Appraisal.NOT_STARTED, Appraisal.DRAFT]:
+                not_started += 1
+            else:
+                in_progress += 1
+        
+        # Any staff without an appraisal record for the active cycles count as not started
+        staff_with_appraisal = appraisals.values_list('staff_id', flat=True).distinct().count()
+        not_started += (total_staff - staff_with_appraisal)
+    else:
+        not_started = total_staff
+
+    context = {
+        'total_staff': total_staff,
+        'completed_appraisals': completed_appraisals,
+        'in_progress': in_progress,
+        'not_started': not_started,
+        'active_cycle': active_cycles.first(),
+    }
+    return render(request, 'appraisals/department_reports.html', context)
 
 
 # ============================================================

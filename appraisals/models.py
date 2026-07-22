@@ -143,6 +143,41 @@ class AppraisalCycle(models.Model):
         """Return the cycle's designated general (default) approval process."""
         return self.approval_processes.filter(is_general=True).first()
 
+    def get_eligible_staff(self):
+        """
+        Return the queryset of CustomUser eligible to participate in this cycle.
+        If target_departments or target_staff are set, ONLY staff matching
+        target_departments OR target_staff (and not in excluded_staff) are eligible.
+        If neither target_departments nor target_staff are set, all active staff in cycle's branch (or all staff if no branch) are eligible.
+        """
+        from accounts.models import CustomUser
+        base_qs = CustomUser.objects.filter(
+            is_active=True,
+            role__in=[CustomUser.STAFF, CustomUser.SUPERVISOR, CustomUser.HOD, CustomUser.DIRECTORATE, CustomUser.HR_ADMIN]
+        )
+
+        has_depts = self.target_departments.exists()
+        has_staff = self.target_staff.exists()
+
+        if has_depts or has_staff:
+            eligible = CustomUser.objects.none()
+            if has_depts:
+                eligible = eligible | base_qs.filter(department__in=self.target_departments.all())
+            if has_staff:
+                eligible = eligible | base_qs.filter(id__in=self.target_staff.values_list('id', flat=True))
+            eligible = eligible.distinct()
+        else:
+            if self.branch:
+                eligible = base_qs.filter(branch=self.branch)
+            else:
+                eligible = base_qs
+
+        if self.excluded_staff.exists():
+            eligible = eligible.exclude(id__in=self.excluded_staff.values_list('id', flat=True))
+
+        return eligible
+
+
 
 # ============================================================
 # APPROVAL WORKFLOW MODELS
@@ -233,6 +268,14 @@ class ApprovalStep(models.Model):
         choices=ROLE_CHOICES,
         help_text="Which role is allowed to action this step."
     )
+    approver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='process_step_assignments',
+        help_text="The specific user assigned to action this step for all appraisals using this process (overrides dynamic role)."
+    )
     action_label_approve = models.CharField(
         max_length=100,
         default="Approve & Forward",
@@ -314,6 +357,46 @@ class AppraisalApprovalAssignment(models.Model):
     def __str__(self):
         approver_name = self.approver.get_full_name() if self.approver else "Unassigned"
         return f"{self.appraisal} — Step {self.step.step_number}: {approver_name} [{self.status}]"
+
+
+class AppraisalReturnLog(models.Model):
+    """
+    Immutable log entry created every time an appraisal is returned.
+    This preserves the full history even when the assignment record
+    is later reset to PENDING and re-approved.
+    """
+    appraisal = models.ForeignKey(
+        'Appraisal',
+        on_delete=models.CASCADE,
+        related_name='return_logs',
+    )
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='return_log_entries',
+    )
+    step = models.ForeignKey(
+        ApprovalStep,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='return_log_entries',
+    )
+    from_step_number = models.PositiveIntegerField(default=0)
+    to_step_number = models.PositiveIntegerField(default=0)  # 0 means back to staff
+    reason = models.TextField(blank=True)
+    returned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-returned_at']
+        verbose_name = 'Return Log'
+        verbose_name_plural = 'Return Logs'
+
+    def __str__(self):
+        reviewer_name = self.reviewer.get_full_name() if self.reviewer else "Unknown"
+        return f"Return by {reviewer_name} on {self.appraisal} @ Step {self.from_step_number} → {self.to_step_number}"
 
 
 # ============================================================
@@ -538,13 +621,23 @@ class FormField(models.Model):
     HOD         = 'HOD'
     DIRECTORATE = 'DIRECTORATE'
     HR_ADMIN    = 'HR_ADMIN'
+    STEP_1      = 'STEP_1'
+    STEP_2      = 'STEP_2'
+    STEP_3      = 'STEP_3'
+    STEP_4      = 'STEP_4'
+    STEP_5      = 'STEP_5'
 
     FILLED_BY_CHOICES = [
         (APPRAISEE,   'Appraisee (Staff)'),
-        (SUPERVISOR,  'Supervisor'),
-        (HOD,         'Head of Department'),
-        (DIRECTORATE, 'Director/Executive'),
-        (HR_ADMIN,    'HR Administrator'),
+        (SUPERVISOR,  'Supervisor (Role)'),
+        (HOD,         'Head of Department (Role)'),
+        (DIRECTORATE, 'Director/Executive (Role)'),
+        (HR_ADMIN,    'HR Administrator (Role)'),
+        (STEP_1,      'Step 1 Approver (Process)'),
+        (STEP_2,      'Step 2 Approver (Process)'),
+        (STEP_3,      'Step 3 Approver (Process)'),
+        (STEP_4,      'Step 4 Approver (Process)'),
+        (STEP_5,      'Step 5 Approver (Process)'),
     ]
 
     section = models.ForeignKey(
@@ -831,10 +924,12 @@ class Appraisal(models.Model):
 
     @property
     def active_process(self):
-        """Return the override process if set, else the cycle's general process."""
+        """Return the override process if set, else the cycle's general process if assigned."""
         if self.override_process_id:
             return self.override_process
-        return self.cycle.general_approval_process
+        if self.approval_assignments.exists():
+            return self.cycle.general_approval_process
+        return None
 
     @property
     def current_assignment(self):

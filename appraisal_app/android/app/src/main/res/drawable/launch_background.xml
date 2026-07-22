@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Native Android splash background - matches app dark theme to prevent white flash -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Deep slate background matching AppConfig.darkBackgroundColor (#0B0F1A) -->
+    <item android:drawable="@color/splash_background" />
+</layer-list>

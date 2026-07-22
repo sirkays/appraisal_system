@@ -209,10 +209,17 @@
                                             <select x-model="field.filled_by"
                                                     class="block w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                                                 <option value="APPRAISEE">👤 Appraisee (Staff)</option>
-                                                <option value="SUPERVISOR">👨‍💼 Supervisor</option>
-                                                <option value="HOD">🏢 Head of Department</option>
-                                                <option value="DIRECTORATE">🎯 Director/Executive</option>
-                                                <option value="HR_ADMIN">🛡️ HR Administrator</option>
+                                                <optgroup label="By Process Step">
+                                                    {% for step in general_steps %}
+                                                    <option value="{{ step.value }}">{{ step.label_full }}</option>
+                                                    {% endfor %}
+                                                </optgroup>
+                                                <optgroup label="By Specific Role">
+                                                    <option value="SUPERVISOR">👨‍💼 Supervisor</option>
+                                                    <option value="HOD">🏢 Head of Department</option>
+                                                    <option value="DIRECTORATE">🎯 Director/Executive</option>
+                                                    <option value="HR_ADMIN">🛡️ HR Administrator</option>
+                                                </optgroup>
                                             </select>
                                         </div>
                                     </div>
@@ -234,7 +241,7 @@
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap">Max Score</label>
-                                        <input type="number" x-model="field.max_score" min="0"
+                                        <input type="number" x-model="field.max_score" min="1"
                                                class="w-24 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                                     </div>
                                     <label class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -286,11 +293,18 @@
                                             <div x-show="field.reviewer_can_score" class="flex items-center gap-3 ml-5">
                                                 <select x-model="field.reviewer_score_role"
                                                         class="flex-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-2 py-1.5 text-xs focus:ring-2 focus:ring-emerald-500 outline-none">
-                                                    <option value="">— Select Role —</option>
-                                                    <option value="SUPERVISOR">Supervisor</option>
-                                                    <option value="HOD">HOD</option>
-                                                    <option value="DIRECTORATE">Director</option>
-                                                    <option value="HR_ADMIN">HR Admin</option>
+                                                    <option value="">— Select Role / Step —</option>
+                                                    <optgroup label="By Process Step">
+                                                        {% for step in general_steps %}
+                                                        <option value="{{ step.value }}">{{ step.label_short }}</option>
+                                                        {% endfor %}
+                                                    </optgroup>
+                                                    <optgroup label="By Specific Role">
+                                                        <option value="SUPERVISOR">Supervisor</option>
+                                                        <option value="HOD">HOD</option>
+                                                        <option value="DIRECTORATE">Director</option>
+                                                        <option value="HR_ADMIN">HR Admin</option>
+                                                    </optgroup>
                                                 </select>
                                                 <div class="flex items-center gap-1 whitespace-nowrap">
                                                     <span class="text-xs text-slate-500">Max:</span>
@@ -308,11 +322,18 @@
                                             <div x-show="field.reviewer_can_comment" class="flex items-center gap-3 ml-5">
                                                 <select x-model="field.reviewer_comment_role"
                                                         class="flex-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-2 py-1.5 text-xs focus:ring-2 focus:ring-emerald-500 outline-none">
-                                                    <option value="">— Select Role —</option>
-                                                    <option value="SUPERVISOR">Supervisor</option>
-                                                    <option value="HOD">HOD</option>
-                                                    <option value="DIRECTORATE">Director</option>
-                                                    <option value="HR_ADMIN">HR Admin</option>
+                                                    <option value="">— Select Role / Step —</option>
+                                                    <optgroup label="By Process Step">
+                                                        {% for step in general_steps %}
+                                                        <option value="{{ step.value }}">{{ step.label_short }}</option>
+                                                        {% endfor %}
+                                                    </optgroup>
+                                                    <optgroup label="By Specific Role">
+                                                        <option value="SUPERVISOR">Supervisor</option>
+                                                        <option value="HOD">HOD</option>
+                                                        <option value="DIRECTORATE">Director</option>
+                                                        <option value="HR_ADMIN">HR Admin</option>
+                                                    </optgroup>
                                                 </select>
                                             </div>
                                         </div>
@@ -368,6 +389,7 @@ function cycleBuilder(cycleId) {
             scoring_scale: {{ cycle.scoring_scale }},
         },
         formSections: {{ form_sections_json|safe }},
+        generalSteps: {{ general_steps_json|safe }},
         toast: { show: false, type: 'success', message: '' },
 
         get totalWeight() {

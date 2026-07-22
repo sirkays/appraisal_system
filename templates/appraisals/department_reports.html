@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Department Reports — Staff Appraisal Portal{% endblock %}
+
+{% block content %}
+<div class="space-y-7 max-w-6xl mx-auto">
+
+    <!-- ══════════ PAGE HEADER ══════════ -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                Department Reports
+            </h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Summary of appraisal progress for <strong class="text-slate-700 dark:text-slate-300">{{ user.department.name }}</strong>.
+            </p>
+        </div>
+        <div class="shrink-0">
+            {% if active_cycle %}
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span class="text-xs font-bold uppercase tracking-wider">Active Cycle: {{ active_cycle.name }}</span>
+            </div>
+            {% else %}
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                <span class="text-xs font-bold uppercase tracking-wider">No Active Cycle</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ══════════ REPORT CARDS ══════════ -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <!-- Total Staff -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex items-start gap-4">
+            <div class="w-12 h-12 shrink-0 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Staff</p>
+                <p class="text-3xl font-extrabold text-slate-900 dark:text-white">{{ total_staff }}</p>
+            </div>
+        </div>
+
+        <!-- Completed Appraisals -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex items-start gap-4">
+            <div class="w-12 h-12 shrink-0 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Completed</p>
+                <p class="text-3xl font-extrabold text-slate-900 dark:text-white">{{ completed_appraisals }}</p>
+            </div>
+        </div>
+
+        <!-- In Progress -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex items-start gap-4">
+            <div class="w-12 h-12 shrink-0 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">In Progress</p>
+                <p class="text-3xl font-extrabold text-slate-900 dark:text-white">{{ in_progress }}</p>
+            </div>
+        </div>
+
+        <!-- Not Started -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex items-start gap-4">
+            <div class="w-12 h-12 shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Not Started</p>
+                <p class="text-3xl font-extrabold text-slate-900 dark:text-white">{{ not_started }}</p>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

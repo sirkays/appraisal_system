@@ -25,6 +25,7 @@ urlpatterns = [
     # Team / department list views (legacy but still useful)
     path('team/', views.team_list, name='team_list'),
     path('department/', views.department_appraisals, name='department_appraisals'),
+    path('department/reports/', views.department_reports, name='department_reports'),
 
     # Legacy compatibility URLs (redirect to step_review)
     path('supervisor-review/<int:pk>/', views.supervisor_review, name='supervisor_review'),

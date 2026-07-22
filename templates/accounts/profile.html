@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My Profile — {{ profile_user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-8 px-4" x-data="{ showPwdModal: false }">
+
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">My Profile</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Update your personal details, profile picture, and security password.</p>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="mb-4 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium
+                  {% if msg.tags == 'success' %}bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800
+                  {% else %}bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800{% endif %}">
+        {% if msg.tags == 'success' %}
+          <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+        {% else %}
+          <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        {% endif %}
+        {{ msg }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data"
+        class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="update_profile">
+
+    <!-- Profile Picture -->
+    <div class="flex items-center gap-6 p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+      <div class="relative">
+        {% if profile_user.profile_picture %}
+          <img src="{{ profile_user.profile_picture.url }}" alt="Profile photo"
+               class="h-20 w-20 rounded-full object-cover ring-4 ring-white dark:ring-slate-700 shadow">
+        {% else %}
+          <div class="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600
+                      flex items-center justify-center text-white text-2xl font-bold
+                      ring-4 ring-white dark:ring-slate-700 shadow">
+            {{ profile_user.first_name|first|upper }}{{ profile_user.last_name|first|upper }}
+          </div>
+        {% endif %}
+      </div>
+      <div class="flex-1">
+        <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Profile Photo</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-3">JPEG or PNG, up to 5 MB.</p>
+        <label class="cursor-pointer inline-flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400
+                       border border-emerald-300 dark:border-emerald-700 rounded-lg px-3 py-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          Upload Photo
+          <input type="file" name="profile_picture" accept="image/*" class="sr-only"
+                 onchange="document.getElementById('pic-name').textContent = this.files[0]?.name ?? ''">
+        </label>
+        <span id="pic-name" class="ml-2 text-xs text-slate-400 dark:text-slate-500"></span>
+      </div>
+    </div>
+
+    <!-- Editable Fields -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6">
+
+      <!-- First Name -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5"
+               for="first_name">First Name</label>
+        <input type="text" id="first_name" name="first_name"
+               value="{{ profile_user.first_name }}"
+               class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                      bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                      px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+      </div>
+
+      <!-- Last Name -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5"
+               for="last_name">Last Name</label>
+        <input type="text" id="last_name" name="last_name"
+               value="{{ profile_user.last_name }}"
+               class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                      bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                      px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+      </div>
+
+      <!-- Email -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5"
+               for="email">Email Address</label>
+        <input type="email" id="email" name="email"
+               value="{{ profile_user.email }}"
+               class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                      bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                      px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+      </div>
+
+      <!-- Phone -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5"
+               for="phone">Phone Number</label>
+        <input type="tel" id="phone" name="phone"
+               value="{{ profile_user.phone }}"
+               placeholder="+234 800 000 0000"
+               class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                      bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                      px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+      </div>
+
+      <!-- Designation (full-width) -->
+      <div class="sm:col-span-2">
+        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5"
+               for="designation">Designation / Job Title</label>
+        <input type="text" id="designation" name="designation"
+               value="{{ profile_user.designation }}"
+               placeholder="e.g. Investigation Officer"
+               class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                      bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                      px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+      </div>
+    </div>
+
+    <!-- Read-only info -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 px-6 pb-4">
+      <div class="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700 px-4 py-3">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-0.5">Staff ID</p>
+        <p class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ profile_user.staff_id }}</p>
+      </div>
+      <div class="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700 px-4 py-3">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-0.5">Role</p>
+        <p class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ profile_user.get_role_display }}</p>
+      </div>
+      <div class="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700 px-4 py-3">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-0.5">Department</p>
+        <p class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ profile_user.department.name|default:"—" }}</p>
+      </div>
+    </div>
+    <p class="px-6 pb-2 text-xs text-slate-400 dark:text-slate-500">
+      Staff ID, role, and department are managed by HR and cannot be changed here.
+    </p>
+
+    <!-- Actions -->
+    <div class="flex items-center justify-between gap-4 px-6 py-4 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800">
+      <a href="{% url 'accounts:dashboard_redirect' %}"
+         class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition">
+        ← Back to Dashboard
+      </a>
+      <div class="flex items-center gap-3">
+        <button type="button" @click="showPwdModal = true"
+                class="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer">
+          Change Password
+        </button>
+        <button type="submit"
+                class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700
+                       text-white text-sm font-semibold px-5 py-2.5 transition shadow-sm cursor-pointer">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Change Password Modal -->
+  <div x-show="showPwdModal" @click.away="showPwdModal = false"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0 scale-95"
+       x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100 scale-100"
+       x-transition:leave-end="opacity-0 scale-95"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+       style="display: none;">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6 overflow-hidden">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white">Change Password</h3>
+        <button type="button" @click="showPwdModal = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="change_password">
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5">Current Password</label>
+          <input type="password" name="current_password" required
+                 class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5">New Password</label>
+          <input type="password" name="new_password" required minlength="8"
+                 class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5">Confirm New Password</label>
+          <input type="password" name="confirm_password" required
+                 class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <button type="button" @click="showPwdModal = false"
+                  class="text-sm font-semibold text-slate-500 dark:text-slate-400 px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition">
+            Cancel
+          </button>
+          <button type="submit"
+                  class="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 transition shadow-sm cursor-pointer">
+            Update Password
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

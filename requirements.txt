@@ -3,3 +3,5 @@ gunicorn
 whitenoise
 python-dotenv
 psycopg2-binary
+djangorestframework
+django-cors-headers

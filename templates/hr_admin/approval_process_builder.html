@@ -1,6 +1,54 @@
 {% extends "base.html" %}
 {% block title %}Approval Process Builder — {{ cycle.name }}{% endblock %}
 
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+<style>
+/* ── Premium TomSelect Overrides ── */
+.ts-wrapper .ts-control::after { display: none !important; }
+.ts-wrapper.single .ts-control, .ts-wrapper .ts-control {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.375rem !important;
+    padding: 0.5rem 0.75rem !important;
+    min-height: 38px !important;
+    font-size: 0.875rem !important;
+    font-family: inherit !important;
+    color: #1e293b !important;
+    background: #fff !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+}
+.ts-wrapper.single .ts-control:hover, .ts-wrapper .ts-control:hover { border-color: #94a3b8 !important; }
+.ts-wrapper.single.focus .ts-control, .ts-wrapper.focus .ts-control {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 1px #10b981 !important;
+}
+.ts-dropdown {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    margin-top: 4px !important;
+    padding: 4px !important;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05) !important;
+}
+.ts-dropdown .option {
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 0.375rem !important;
+    font-size: 0.875rem !important;
+}
+.ts-dropdown .option:hover, .ts-dropdown .option.active {
+    background: #ecfdf5 !important;
+    color: #065f46 !important;
+}
+.ts-dropdown .optgroup-header {
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    text-transform: uppercase !important;
+    padding: 0.5rem 0.75rem !important;
+    background: #f8fafc !important;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
   <!-- Header -->
@@ -102,6 +150,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <!-- Toast Container -->
 <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-3 min-w-[320px]"></div>
 
@@ -111,6 +160,8 @@ const ROLE_CHOICES = [
   { value: "{{ code }}", label: "{{ label }}" }{% if not forloop.last %},{% endif %}
   {% endfor %}
 ];
+
+const USERS = {{ users_json|safe }};
 
 let steps = {{ steps_json|safe }};
 
@@ -144,20 +195,26 @@ function renderSteps() {
       </div>
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-medium text-slate-500 mb-1">Role Required</label>
-          <select class="block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-                  onchange="updateStep(${idx}, 'role_required', this.value)">
-            ${ROLE_CHOICES.map(r => `<option value="${r.value}" ${step.role_required === r.value ? 'selected' : ''}>${r.label}</option>`).join('')}
+        <div class="md:col-span-2">
+          <label class="block text-xs font-medium text-slate-500 mb-1">Reviewer Assignment</label>
+          <select class="reviewer-select block w-full"
+                  onchange="updateStepAssignee(${idx}, this.value)"
+                  data-idx="${idx}">
+            <optgroup label="Dynamic Roles">
+              ${ROLE_CHOICES.map(r => `
+                <option value="dynamic_${r.value}" ${(step.approver_id == null && step.role_required === r.value) ? 'selected' : ''}>
+                  Dynamic: ${r.label}
+                </option>
+              `).join('')}
+            </optgroup>
+            <optgroup label="Specific Staff">
+              ${USERS.map(u => `
+                <option value="user_${u.id}" ${step.approver_id == u.id ? 'selected' : ''}>
+                  ${escHtml(u.name)}
+                </option>
+              `).join('')}
+            </optgroup>
           </select>
-        </div>
-        <div class="flex items-end pb-2">
-          <label class="inline-flex items-center cursor-pointer">
-            <input type="checkbox" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border border-slate-300 rounded"
-                   ${step.can_score ? 'checked' : ''}
-                   onchange="updateStep(${idx}, 'can_score', this.checked)">
-            <span class="ml-2 text-sm font-medium text-slate-700">Reviewer can enter/edit scores</span>
-          </label>
         </div>
         <div>
           <label class="block text-xs font-medium text-slate-500 mb-1">Approve Button Label</label>
@@ -173,6 +230,14 @@ function renderSteps() {
                  placeholder="Return for Revision"
                  onchange="updateStep(${idx}, 'action_label_return', this.value)">
         </div>
+        <div class="md:col-span-2 flex items-center pt-2">
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border border-slate-300 rounded"
+                   ${step.can_score ? 'checked' : ''}
+                   onchange="updateStep(${idx}, 'can_score', this.checked)">
+            <span class="ml-2 text-sm font-medium text-slate-700">Reviewer can enter/edit scores</span>
+          </label>
+        </div>
       </div>
     </div>
     ${idx < steps.length - 1 ? `
@@ -183,6 +248,18 @@ function renderSteps() {
       </div>
     ` : ''}
   `).join('');
+
+  // Initialize TomSelect on new selects
+  document.querySelectorAll('.reviewer-select').forEach(el => {
+    if (!el.tomselect) {
+      new TomSelect(el, {
+        searchField: ['text'],
+        render: {
+          no_results: function() { return '<div class="no-results p-2 text-slate-500 text-sm">No match found</div>'; }
+        }
+      });
+    }
+  });
 
   updateFlowPreview();
 }
@@ -195,7 +272,7 @@ function updateFlowPreview() {
     <div class="flex flex-col items-center bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 min-w-[140px] flex-shrink-0">
       <span class="text-[10px] font-bold text-emerald-600 uppercase">Step ${idx + 1}</span>
       <span class="text-sm font-semibold text-slate-800 mt-1">${escHtml(step.label) || '(untitled)'}</span>
-      <span class="text-[10px] text-slate-500 mt-1">${ROLE_CHOICES.find(r=>r.value===step.role_required)?.label || ''}</span>
+      <span class="text-[10px] text-slate-500 mt-1">${step.approver_id ? escHtml(USERS.find(u => u.id == step.approver_id)?.name) : (ROLE_CHOICES.find(r=>r.value===step.role_required)?.label || '')}</span>
     </div>
   `).join('');
 }
@@ -209,6 +286,7 @@ function addStep() {
     step_number: steps.length + 1,
     label: '',
     role_required: 'SUPERVISOR',
+    approver_id: null,
     action_label_approve: 'Approve & Forward',
     action_label_return: 'Return for Revision',
     can_score: true,
@@ -219,6 +297,16 @@ function addStep() {
 function updateStep(idx, field, value) {
   steps[idx][field] = value;
   // Re-render flow preview silently
+  updateFlowPreview();
+}
+
+function updateStepAssignee(idx, value) {
+  if (value.startsWith('dynamic_')) {
+    steps[idx].role_required = value.replace('dynamic_', '');
+    steps[idx].approver_id = null;
+  } else if (value.startsWith('user_')) {
+    steps[idx].approver_id = parseInt(value.replace('user_', ''), 10);
+  }
   updateFlowPreview();
 }
 

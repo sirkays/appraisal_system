@@ -46,13 +46,20 @@ def logout_view(request):
 
 @login_required
 def switch_cycle(request):
-    """Store the selected cycle ID in the session and redirect back."""
+    """Store the selected cycle ID in the session and redirect back.
+
+    Only accept the switch if the requesting user is eligible to participate
+    in the chosen cycle (or is an HR admin who manages all cycles).
+    """
     if request.method == 'POST':
         cycle_id = request.POST.get('cycle_id')
         if cycle_id:
             try:
                 cycle = AppraisalCycle.objects.get(pk=int(cycle_id), status=AppraisalCycle.ACTIVE)
-                request.session['selected_cycle_id'] = cycle.id
+                # Verify the user is allowed to see/switch to this cycle
+                if request.user.role == CustomUser.HR_ADMIN or request.user.is_staff \
+                        or request.user in cycle.get_eligible_staff():
+                    request.session['selected_cycle_id'] = cycle.id
             except (ValueError, AppraisalCycle.DoesNotExist):
                 pass
     return redirect(_role_dashboard_url(request.user))
@@ -62,15 +69,36 @@ def switch_cycle(request):
 # HELPERS
 # ============================================================
 
+def _get_eligible_cycles_for_user(user):
+    """
+    Return a list of active AppraisalCycle objects the given user is eligible
+    to participate in.  HR admins see all active cycles.
+    """
+    qs = AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE).order_by('-start_date')
+    if user.role == CustomUser.HR_ADMIN or user.is_staff:
+        return list(qs)
+    return [c for c in qs if user in c.get_eligible_staff()]
+
+
 def _get_selected_cycle(request):
-    """Return the session-selected active cycle, or fall back to the most recent."""
+    """
+    Return the session-selected active cycle, or fall back to the most recent
+    cycle the user is eligible for.
+    """
+    eligible = _get_eligible_cycles_for_user(request.user)
+    if not eligible:
+        return None
+
     selected_id = request.session.get('selected_cycle_id')
     if selected_id:
-        try:
-            return AppraisalCycle.objects.get(pk=selected_id, status=AppraisalCycle.ACTIVE)
-        except AppraisalCycle.DoesNotExist:
-            pass
-    return AppraisalCycle.objects.filter(status=AppraisalCycle.ACTIVE).order_by('-start_date').first()
+        match = next((c for c in eligible if c.id == selected_id), None)
+        if match:
+            return match
+        # Session points to a cycle the user is no longer eligible for — reset it
+        request.session.pop('selected_cycle_id', None)
+
+    # Fallback: most recent eligible cycle
+    return eligible[0]
 
 
 # ============================================================
@@ -127,7 +155,14 @@ def staff_dashboard(request):
             status_display = "Not Started"
             process = active_cycle.general_approval_process
             if process:
-                approval_steps = list(process.steps.all())
+                from hr_admin.views import _resolve_dynamic_approver
+                is_valid = True
+                for step in process.steps.all():
+                    if not step.approver and not _resolve_dynamic_approver(request.user, step.role_required):
+                        is_valid = False
+                        break
+                if is_valid:
+                    approval_steps = list(process.steps.all())
             progress = 0
 
     # Past appraisals
@@ -377,3 +412,82 @@ def admin_dashboard(request):
     if request.user.role == CustomUser.HR_ADMIN:
         return redirect('hr_admin:dashboard')
     return redirect('accounts:dashboard_redirect')
+
+
+# ============================================================
+# PROFILE & SETTINGS
+# ============================================================
+
+@login_required
+def profile(request):
+    """
+    My Profile — lets every user view and update their own basic info:
+    first_name, last_name, email, phone, designation, profile picture,
+    and change password.
+    """
+    user = request.user
+    if request.method == 'POST':
+        action = request.POST.get('action', 'update_profile')
+        if action == 'change_password':
+            from django.contrib.auth import update_session_auth_hash
+            current_password = request.POST.get('current_password', '')
+            new_password = request.POST.get('new_password', '')
+            confirm_password = request.POST.get('confirm_password', '')
+
+            if not user.check_password(current_password):
+                messages.error(request, 'Your current password is incorrect.')
+            elif len(new_password) < 8:
+                messages.error(request, 'New password must be at least 8 characters.')
+            elif new_password != confirm_password:
+                messages.error(request, 'New password and confirmation do not match.')
+            else:
+                user.set_password(new_password)
+                user.save()
+                update_session_auth_hash(request, user)
+                messages.success(request, 'Password changed successfully.')
+            return redirect('accounts:profile')
+        else:
+            user.first_name = request.POST.get('first_name', user.first_name).strip()
+            user.last_name = request.POST.get('last_name', user.last_name).strip()
+            user.email = request.POST.get('email', user.email).strip()
+            user.phone = request.POST.get('phone', user.phone).strip()
+            user.designation = request.POST.get('designation', user.designation).strip()
+
+            if 'profile_picture' in request.FILES:
+                user.profile_picture = request.FILES['profile_picture']
+
+            user.save()
+            messages.success(request, 'Profile updated successfully.')
+            return redirect('accounts:profile')
+
+    return render(request, 'accounts/profile.html', {'profile_user': user})
+
+
+@login_required
+def settings(request):
+    """
+    Settings — password change only. Validates current password before
+    updating to prevent unauthorised changes.
+    """
+    from django.contrib.auth import update_session_auth_hash
+
+    if request.method == 'POST':
+        current_password = request.POST.get('current_password', '')
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
+        if not request.user.check_password(current_password):
+            messages.error(request, 'Your current password is incorrect.')
+        elif len(new_password) < 8:
+            messages.error(request, 'New password must be at least 8 characters.')
+        elif new_password != confirm_password:
+            messages.error(request, 'New password and confirmation do not match.')
+        else:
+            request.user.set_password(new_password)
+            request.user.save()
+            # Keep the user logged in after password change
+            update_session_auth_hash(request, request.user)
+            messages.success(request, 'Password changed successfully.')
+            return redirect('accounts:settings')
+
+    return render(request, 'accounts/settings.html')
