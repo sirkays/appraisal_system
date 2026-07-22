@@ -189,16 +189,13 @@ STORAGES = {
         else "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-        "OPTIONS": {
-            "manifest_strict": False,
-        },
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
 
 # Added to fix `AttributeError` in cloudinary_storage during collectstatic in Django 5.1+
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-WHITENOISE_MANIFEST_STRICT = False
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+
 
 
 
