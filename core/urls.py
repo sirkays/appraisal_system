@@ -1,12 +1,12 @@
 """
 URL configuration for the Staff Performance Appraisal System.
 
-Routes to each app's URL namespace and serves media files in development.
+Routes to each app's URL namespace and serves media files.
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
-from django.conf.urls.static import static
+from django.views.static import serve
 
 
 urlpatterns = [
@@ -18,12 +18,12 @@ urlpatterns = [
     path('hr/', include('hr_admin.urls')),
     path('cbt/', include('cbt.urls')),
     path('api/', include('api.urls')),
-]
 
-# Serve media files in all environments.
-# Caddy (Docker) proxies directly to Gunicorn, bypassing Nginx,
-# so Django must handle media file serving.
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Serve media files in all environments.
+    # Caddy (Docker) proxies directly to Gunicorn, bypassing Nginx,
+    # so Django must handle media file serving.
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+]
 
 # Admin site customisation
 admin.site.site_header = 'Staff Appraisal Organization - Staff Appraisal System'
