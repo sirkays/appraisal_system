@@ -20,9 +20,10 @@ urlpatterns = [
     path('api/', include('api.urls')),
 ]
 
-# Serve media files during development
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve media files in all environments.
+# Caddy (Docker) proxies directly to Gunicorn, bypassing Nginx,
+# so Django must handle media file serving.
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Admin site customisation
 admin.site.site_header = 'Staff Appraisal Organization - Staff Appraisal System'
